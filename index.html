@@ -455,8 +455,13 @@
                 </select>
                 <button onclick="createNewSession()" class="session-btn" style="width: 150px;">New Session</button>
             </div>
-            <div id="connectionStatus" class="status-indicator status-loading">
-                Connecting...
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div id="currentSession" style="font-weight: 600; color: #28a745;">
+                    No session selected
+                </div>
+                <div id="connectionStatus" class="status-indicator status-loading">
+                    Connecting...
+                </div>
             </div>
         </div>
 
@@ -491,6 +496,9 @@
                 </div>
                 <div class="control-group">
                     <button onclick="clearAllVotes()" class="clear-btn" id="clearBtn">Clear All Votes</button>
+                </div>
+                <div class="control-group">
+                    <button onclick="reloadCurrentSession()" class="session-btn" id="reloadBtn">Reload Session</button>
                 </div>
             </div>
         </div>
@@ -674,8 +682,15 @@
                     select.appendChild(option);
                 });
                 
+                // Auto-select the most recent session
+                if (data.length > 0) {
+                    select.value = data[0].id;
+                    await loadSession(data[0].id);
+                }
+                
             } catch (error) {
                 console.error('Error loading sessions:', error);
+                alert('Error loading sessions: ' + error.message);
             }
         }
 
@@ -702,27 +717,43 @@
         }
 
         async function loadSession(sessionId) {
-            if (!sessionId) return;
+            if (!sessionId) {
+                console.log('No session ID provided');
+                return;
+            }
             
+            console.log('Loading session:', sessionId);
             currentSessionId = sessionId;
             updateConnectionStatus('loading');
             
             try {
                 // Load legislators
+                console.log('Loading legislators for session:', sessionId);
                 const { data: legislatorData, error: legError } = await supabase
                     .from('legislators')
                     .select('*')
                     .eq('session_id', sessionId);
                 
-                if (legError) throw legError;
+                if (legError) {
+                    console.error('Error loading legislators:', legError);
+                    throw legError;
+                }
+                
+                console.log('Loaded legislators:', legislatorData);
                 
                 // Load votes
+                console.log('Loading votes for session:', sessionId);
                 const { data: voteData, error: voteError } = await supabase
                     .from('votes')
                     .select('*')
                     .eq('session_id', sessionId);
                 
-                if (voteError) throw voteError;
+                if (voteError) {
+                    console.error('Error loading votes:', voteError);
+                    throw voteError;
+                }
+                
+                console.log('Loaded votes:', voteData);
                 
                 // Organize data
                 legislators = { republican: [], democrat: [] };
@@ -736,12 +767,19 @@
                     votes[vote.legislator_id] = vote.vote_type;
                 });
                 
+                console.log('Organized data:', { legislators, votes });
+                
+                // Update current session display
+                const sessionName = document.getElementById('sessionSelect').selectedOptions[0].textContent;
+                document.getElementById('currentSession').textContent = `Active: ${sessionName}`;
+                
                 renderLegislators();
                 updateResults();
                 updateConnectionStatus('connected');
                 
             } catch (error) {
                 console.error('Error loading session:', error);
+                alert('Error loading session: ' + error.message);
                 updateConnectionStatus('error');
             }
         }
@@ -752,12 +790,19 @@
             const party = document.getElementById('legislatorParty').value;
             const chamber = document.getElementById('legislatorChamber').value;
 
-            if (!name || !currentSessionId) {
-                alert('Please enter a name and select a session');
+            if (!name) {
+                alert('Please enter a legislator name');
+                return;
+            }
+
+            if (!currentSessionId) {
+                alert('No session selected. Please select or create a session first.');
                 return;
             }
 
             try {
+                console.log('Adding legislator:', { name, party, chamber, session_id: currentSessionId });
+                
                 const { data, error } = await supabase
                     .from('legislators')
                     .insert([{
@@ -768,8 +813,12 @@
                     }])
                     .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database error:', error);
+                    throw error;
+                }
 
+                console.log('Legislator added successfully:', data);
                 legislators[party].push(data[0]);
                 document.getElementById('legislatorName').value = '';
                 renderLegislators();
@@ -777,7 +826,7 @@
 
             } catch (error) {
                 console.error('Error adding legislator:', error);
-                alert('Failed to add legislator');
+                alert('Failed to add legislator: ' + error.message);
             }
         }
 
@@ -987,6 +1036,15 @@
         function showAddLegislator(party) {
             document.getElementById('legislatorParty').value = party;
             document.getElementById('legislatorName').focus();
+        }
+
+        async function reloadCurrentSession() {
+            if (currentSessionId) {
+                console.log('Reloading current session:', currentSessionId);
+                await loadSession(currentSessionId);
+            } else {
+                alert('No session currently selected');
+            }
         }
 
         async function exportResults() {
