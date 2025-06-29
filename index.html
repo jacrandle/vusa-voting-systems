@@ -1115,9 +1115,11 @@
                 return;
             }
 
+            console.log('Recording vote:', { id, voteType, isSenator, sessionId: currentSessionId });
+
             try {
-                const table = issenator ? 'senator_votes' : 'faction_votes';
-                const idField = issenator ? 'senator_id' : 'faction_id';
+                const table = isSenator ? 'senator_votes' : 'faction_votes';
+                const idField = isSenator ? 'senator_id' : 'faction_id';
                 
                 // Delete existing vote
                 await supabase
