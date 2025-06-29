@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Voting System</title>
+    <title>Advanced Congressional Voting System</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -83,13 +83,28 @@
             color: #721c24;
         }
 
-        .controls {
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-section {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 20px;
-            margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
         }
 
         .control-row {
@@ -102,7 +117,7 @@
 
         .control-group {
             flex: 1;
-            min-width: 200px;
+            min-width: 150px;
         }
 
         label {
@@ -110,15 +125,20 @@
             margin-bottom: 5px;
             font-weight: 600;
             color: #555;
+            font-size: 14px;
         }
 
         input, select, button {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: 2px solid #e1e5e9;
             border-radius: 8px;
             font-size: 14px;
             transition: all 0.3s ease;
+        }
+
+        input[type="number"] {
+            text-align: center;
         }
 
         input:focus, select:focus {
@@ -148,14 +168,14 @@
             transform: none;
         }
 
-        .voting-section {
+        .chambers-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
             margin-bottom: 30px;
         }
 
-        .party-section {
+        .chamber-section {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             border-radius: 15px;
@@ -163,25 +183,51 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
 
+        .chamber-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .chamber-title {
+            font-size: 1.6em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .parties-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .party-section {
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .republican-section {
+            border-color: #dc3545;
+            background: rgba(220, 53, 69, 0.05);
+        }
+
+        .democrat-section {
+            border-color: #007bff;
+            background: rgba(0, 123, 255, 0.05);
+        }
+
         .party-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid;
-        }
-
-        .republican-section .party-header {
-            border-color: #dc3545;
-        }
-
-        .democrat-section .party-header {
-            border-color: #007bff;
+            margin-bottom: 15px;
         }
 
         .party-title {
-            font-size: 1.4em;
+            font-size: 1.2em;
             font-weight: 700;
         }
 
@@ -193,48 +239,51 @@
             color: #007bff;
         }
 
-        .seat-count {
-            background: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-
-        .legislator-item {
+        .faction-item {
             display: flex;
             align-items: center;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 8px;
             transition: all 0.3s ease;
         }
 
-        .legislator-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .faction-item:hover {
+            transform: translateX(3px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .legislator-name {
+        .faction-info {
             flex: 1;
-            font-weight: 500;
-            margin-right: 15px;
+            margin-right: 10px;
+        }
+
+        .faction-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .faction-count {
+            font-size: 12px;
+            color: #666;
         }
 
         .vote-buttons {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         .vote-btn {
-            width: 50px;
-            padding: 8px 4px;
-            font-size: 12px;
+            width: 40px;
+            height: 30px;
+            font-size: 11px;
             font-weight: 600;
             border: 2px solid;
-            border-radius: 6px;
+            border-radius: 5px;
             cursor: pointer;
             transition: all 0.3s ease;
+            padding: 0;
         }
 
         .vote-btn.aye {
@@ -297,13 +346,6 @@
             text-align: center;
         }
 
-        .chamber-title {
-            font-size: 1.5em;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #333;
-        }
-
         .results-table {
             width: 100%;
             border-collapse: collapse;
@@ -337,15 +379,15 @@
         }
 
         .delete-btn {
-            width: 30px;
-            height: 30px;
+            width: 25px;
+            height: 25px;
             border-radius: 50%;
             background: #dc3545;
             color: white;
             border: none;
             cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
+            font-size: 14px;
+            margin-left: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -356,23 +398,24 @@
             transform: scale(1.1);
         }
 
-        .add-legislator {
+        .add-faction {
             background: rgba(40, 167, 69, 0.1);
             border: 2px dashed #28a745;
             color: #28a745;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 12px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 10px;
             transition: all 0.3s ease;
+            font-size: 13px;
         }
 
-        .add-legislator:hover {
+        .add-faction:hover {
             background: rgba(40, 167, 69, 0.2);
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .loading {
@@ -398,12 +441,22 @@
             to { transform: rotate(360deg); }
         }
 
-        @media (max-width: 768px) {
-            .voting-section {
+        @media (max-width: 1200px) {
+            .chambers-section {
                 grid-template-columns: 1fr;
             }
             
             .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .parties-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -423,16 +476,23 @@
 
         .export-btn {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            margin-top: 10px;
         }
 
         .clear-btn {
             background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
-            margin-top: 10px;
         }
 
         .session-btn {
             background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+
+        .seat-display {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -443,8 +503,8 @@
 
     <div id="app" class="container" style="display: none;">
         <div class="header">
-            <h1>📊 Interactive Voting System</h1>
-            <p>Advanced Congressional Vote Tracking with Real-time Database</p>
+            <h1>🏛️ Advanced Congressional Voting System</h1>
+            <p>Faction-Based Vote Tracking with Customizable Party Compositions</p>
         </div>
 
         <div class="session-info">
@@ -465,70 +525,160 @@
             </div>
         </div>
 
-        <div class="controls">
-            <div class="control-row">
-                <div class="control-group">
-                    <label for="legislatorName">Add New Legislator</label>
-                    <input type="text" id="legislatorName" placeholder="Enter legislator name">
+        <div class="controls-grid">
+            <div class="control-section">
+                <div class="section-title">📊 Party Seat Configuration</div>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label>Republican Senate Seats</label>
+                        <input type="number" id="repSenateSeats" value="49" min="0" max="100" onchange="updatePartySeats()">
+                    </div>
+                    <div class="control-group">
+                        <label>Republican House Seats</label>
+                        <input type="number" id="repHouseSeats" value="232" min="0" max="435" onchange="updatePartySeats()">
+                    </div>
                 </div>
-                <div class="control-group">
-                    <label for="legislatorParty">Party</label>
-                    <select id="legislatorParty">
-                        <option value="republican">Republican</option>
-                        <option value="democrat">Democrat</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="legislatorChamber">Chamber</label>
-                    <select id="legislatorChamber">
-                        <option value="senate">Senate</option>
-                        <option value="house">House</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>&nbsp;</label>
-                    <button onclick="addLegislator()" id="addBtn">Add Legislator</button>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label>Democrat Senate Seats</label>
+                        <input type="number" id="demSenateSeats" value="50" min="0" max="100" onchange="updatePartySeats()">
+                    </div>
+                    <div class="control-group">
+                        <label>Democrat House Seats</label>
+                        <input type="number" id="demHouseSeats" value="203" min="0" max="435" onchange="updatePartySeats()">
+                    </div>
                 </div>
             </div>
-            <div class="control-row">
-                <div class="control-group">
-                    <button onclick="exportResults()" class="export-btn" id="exportBtn">Export Results</button>
+
+            <div class="control-section">
+                <div class="section-title">👥 Add New Faction</div>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label for="factionName">Faction Name</label>
+                        <input type="text" id="factionName" placeholder="e.g., Progressive Caucus">
+                    </div>
+                    <div class="control-group">
+                        <label for="factionParty">Party</label>
+                        <select id="factionParty">
+                            <option value="republican">Republican</option>
+                            <option value="democrat">Democrat</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="control-group">
-                    <button onclick="clearAllVotes()" class="clear-btn" id="clearBtn">Clear All Votes</button>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label for="factionSenateCount">Senate Members</label>
+                        <input type="number" id="factionSenateCount" value="0" min="0" max="100">
+                    </div>
+                    <div class="control-group">
+                        <label for="factionHouseCount">House Members</label>
+                        <input type="number" id="factionHouseCount" value="0" min="0" max="435">
+                    </div>
                 </div>
-                <div class="control-group">
-                    <button onclick="reloadCurrentSession()" class="session-btn" id="reloadBtn">Reload Session</button>
+                <button onclick="addFaction()">Add Faction</button>
+            </div>
+        </div>
+
+        <div class="chambers-section">
+            <div class="chamber-section">
+                <div class="chamber-header">
+                    <div class="chamber-title">🏛️ Senate (Individual Votes)</div>
+                    <div style="font-size: 14px; color: #666;">Add individual senators and their factions</div>
+                </div>
+                
+                <div class="control-row" style="margin-bottom: 20px;">
+                    <div class="control-group">
+                        <label for="senatorName">Senator Name</label>
+                        <input type="text" id="senatorName" placeholder="Enter senator name">
+                    </div>
+                    <div class="control-group">
+                        <label for="senatorParty">Party</label>
+                        <select id="senatorParty">
+                            <option value="republican">Republican</option>
+                            <option value="democrat">Democrat</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="senatorFaction">Faction</label>
+                        <select id="senatorFaction">
+                            <option value="">Select faction...</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>&nbsp;</label>
+                        <button onclick="addSenator()">Add Senator</button>
+                    </div>
+                </div>
+
+                <div class="parties-grid">
+                    <div class="party-section republican-section">
+                        <div class="party-header">
+                            <span class="party-title">🔴 Republicans</span>
+                        </div>
+                        <div class="seat-display">
+                            Seats: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
+                        </div>
+                        <div id="republicanSenators"></div>
+                    </div>
+
+                    <div class="party-section democrat-section">
+                        <div class="party-header">
+                            <span class="party-title">🔵 Democrats</span>
+                        </div>
+                        <div class="seat-display">
+                            Seats: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
+                        </div>
+                        <div id="democratSenators"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chamber-section">
+                <div class="chamber-header">
+                    <div class="chamber-title">🏢 House (Faction Votes)</div>
+                    <div style="font-size: 14px; color: #666;">Vote by faction, scaled to party composition</div>
+                </div>
+
+                <div class="parties-grid">
+                    <div class="party-section republican-section">
+                        <div class="party-header">
+                            <span class="party-title">🔴 Republicans</span>
+                        </div>
+                        <div class="seat-display">
+                            Seats: <span id="repHouseCurrent">0</span> / <span id="repHouseTotal">232</span>
+                        </div>
+                        <div id="republicanHouseFactions"></div>
+                        <div class="add-faction" onclick="showAddFaction('republican')">
+                            + Add Republican Faction
+                        </div>
+                    </div>
+
+                    <div class="party-section democrat-section">
+                        <div class="party-header">
+                            <span class="party-title">🔵 Democrats</span>
+                        </div>
+                        <div class="seat-display">
+                            Seats: <span id="demHouseCurrent">0</span> / <span id="demHouseTotal">203</span>
+                        </div>
+                        <div id="democratHouseFactions"></div>
+                        <div class="add-faction" onclick="showAddFaction('democrat')">
+                            + Add Democrat Faction
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="voting-section">
-            <div class="party-section republican-section">
-                <div class="party-header">
-                    <span class="party-title">🔴 Republicans</span>
-                    <div class="seat-count">
-                        Senate: <span id="repSenateCount">0</span> | 
-                        House: <span id="repHouseCount">0</span>
-                    </div>
+        <div class="control-section">
+            <div class="control-row">
+                <div class="control-group">
+                    <button onclick="exportResults()" class="export-btn">Export Results</button>
                 </div>
-                <div id="republicanLegislators"></div>
-                <div class="add-legislator" onclick="showAddLegislator('republican')">
-                    + Add Republican Legislator
+                <div class="control-group">
+                    <button onclick="clearAllVotes()" class="clear-btn">Clear All Votes</button>
                 </div>
-            </div>
-
-            <div class="party-section democrat-section">
-                <div class="party-header">
-                    <span class="party-title">🔵 Democrats</span>
-                    <div class="seat-count">
-                        Senate: <span id="demSenateCount">0</span> | 
-                        House: <span id="demHouseCount">0</span>
-                    </div>
-                </div>
-                <div id="democratLegislators"></div>
-                <div class="add-legislator" onclick="showAddLegislator('democrat')">
-                    + Add Democrat Legislator
+                <div class="control-group">
+                    <button onclick="reloadCurrentSession()" class="session-btn">Reload Session</button>
                 </div>
             </div>
         </div>
@@ -617,8 +767,13 @@
         // Initialize Supabase client
         let supabase;
         let currentSessionId = null;
-        let legislators = { republican: [], democrat: [] };
+        let factions = { republican: [], democrat: [] };
+        let senators = { republican: [], democrat: [] };
         let votes = {};
+        let partySeats = {
+            republican: { senate: 49, house: 232 },
+            democrat: { senate: 50, house: 203 }
+        };
 
         // ===== INITIALIZATION =====
         async function initializeApp() {
@@ -639,7 +794,6 @@
             } catch (error) {
                 console.error('Failed to initialize:', error);
                 updateConnectionStatus('error');
-                // Show fallback mode
                 document.getElementById('loading').innerHTML = 
                     '❌ Database connection failed. Running in offline mode.<br><button onclick="location.reload()">Retry</button>';
             }
@@ -727,53 +881,76 @@
             updateConnectionStatus('loading');
             
             try {
-                // Load legislators
-                console.log('Loading legislators for session:', sessionId);
-                const { data: legislatorData, error: legError } = await supabase
-                    .from('legislators')
+                // Load factions
+                const { data: factionData, error: factionError } = await supabase
+                    .from('factions')
                     .select('*')
                     .eq('session_id', sessionId);
                 
-                if (legError) {
-                    console.error('Error loading legislators:', legError);
-                    throw legError;
-                }
+                if (factionError) throw factionError;
                 
-                console.log('Loaded legislators:', legislatorData);
+                // Load senators
+                const { data: senatorData, error: senatorError } = await supabase
+                    .from('senators')
+                    .select('*')
+                    .eq('session_id', sessionId);
+                
+                if (senatorError) throw senatorError;
                 
                 // Load votes
-                console.log('Loading votes for session:', sessionId);
                 const { data: voteData, error: voteError } = await supabase
-                    .from('votes')
+                    .from('faction_votes')
                     .select('*')
                     .eq('session_id', sessionId);
                 
-                if (voteError) {
-                    console.error('Error loading votes:', voteError);
-                    throw voteError;
-                }
+                if (voteError) throw voteError;
                 
-                console.log('Loaded votes:', voteData);
+                // Load party seats
+                const { data: partyData, error: partyError } = await supabase
+                    .from('party_seats')
+                    .select('*')
+                    .eq('session_id', sessionId);
+                
+                if (partyError) throw partyError;
                 
                 // Organize data
-                legislators = { republican: [], democrat: [] };
+                factions = { republican: [], democrat: [] };
+                senators = { republican: [], democrat: [] };
                 votes = {};
                 
-                legislatorData.forEach(leg => {
-                    legislators[leg.party].push(leg);
+                factionData.forEach(faction => {
+                    factions[faction.party].push(faction);
+                });
+                
+                senatorData.forEach(senator => {
+                    senators[senator.party].push(senator);
                 });
                 
                 voteData.forEach(vote => {
-                    votes[vote.legislator_id] = vote.vote_type;
+                    votes[vote.faction_id || vote.senator_id] = vote.vote_type;
                 });
                 
-                console.log('Organized data:', { legislators, votes });
+                // Load party seats if available
+                if (partyData.length > 0) {
+                    const partySeatsData = partyData[0];
+                    partySeats = {
+                        republican: { 
+                            senate: partySeatsData.rep_senate || 49, 
+                            house: partySeatsData.rep_house || 232 
+                        },
+                        democrat: { 
+                            senate: partySeatsData.dem_senate || 50, 
+                            house: partySeatsData.dem_house || 203 
+                        }
+                    };
+                    updatePartySeatsDisplay();
+                }
                 
-                // Update current session display
                 const sessionName = document.getElementById('sessionSelect').selectedOptions[0].textContent;
                 document.getElementById('currentSession').textContent = `Active: ${sessionName}`;
                 
-                renderLegislators();
+                updateFactionSelectors();
+                renderAll();
                 updateResults();
                 updateConnectionStatus('connected');
                 
@@ -784,117 +961,185 @@
             }
         }
 
-        // ===== LEGISLATOR MANAGEMENT =====
-        async function addLegislator() {
-            const name = document.getElementById('legislatorName').value.trim();
-            const party = document.getElementById('legislatorParty').value;
-            const chamber = document.getElementById('legislatorChamber').value;
+        // ===== PARTY SEATS MANAGEMENT =====
+        function updatePartySeats() {
+            partySeats = {
+                republican: {
+                    senate: parseInt(document.getElementById('repSenateSeats').value) || 0,
+                    house: parseInt(document.getElementById('repHouseSeats').value) || 0
+                },
+                democrat: {
+                    senate: parseInt(document.getElementById('demSenateSeats').value) || 0,
+                    house: parseInt(document.getElementById('demHouseSeats').value) || 0
+                }
+            };
+            
+            updatePartySeatsDisplay();
+            savePartySeats();
+            updateResults();
+        }
 
-            if (!name) {
-                alert('Please enter a legislator name');
-                return;
+        function updatePartySeatsDisplay() {
+            document.getElementById('repSenateSeats').value = partySeats.republican.senate;
+            document.getElementById('repHouseSeats').value = partySeats.republican.house;
+            document.getElementById('demSenateSeats').value = partySeats.democrat.senate;
+            document.getElementById('demHouseSeats').value = partySeats.democrat.house;
+            
+            document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
+            document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
+            document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
+            document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
+        }
+
+        async function savePartySeats() {
+            if (!currentSessionId) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('party_seats')
+                    .upsert([{
+                        session_id: currentSessionId,
+                        rep_senate: partySeats.republican.senate,
+                        rep_house: partySeats.republican.house,
+                        dem_senate: partySeats.democrat.senate,
+                        dem_house: partySeats.democrat.house
+                    }]);
+                
+                if (error) throw error;
+                
+            } catch (error) {
+                console.error('Error saving party seats:', error);
             }
+        }
 
-            if (!currentSessionId) {
-                alert('No session selected. Please select or create a session first.');
+        // ===== FACTION MANAGEMENT =====
+        async function addFaction() {
+            const name = document.getElementById('factionName').value.trim();
+            const party = document.getElementById('factionParty').value;
+            const senateCount = parseInt(document.getElementById('factionSenateCount').value) || 0;
+            const houseCount = parseInt(document.getElementById('factionHouseCount').value) || 0;
+
+            if (!name || !currentSessionId) {
+                alert('Please enter a faction name and select a session');
                 return;
             }
 
             try {
-                console.log('Adding legislator:', { name, party, chamber, session_id: currentSessionId });
-                
                 const { data, error } = await supabase
-                    .from('legislators')
+                    .from('factions')
                     .insert([{
                         session_id: currentSessionId,
                         name: name,
                         party: party,
-                        chamber: chamber
+                        senate_count: senateCount,
+                        house_count: houseCount
                     }])
                     .select();
 
-                if (error) {
-                    console.error('Database error:', error);
-                    throw error;
-                }
+                if (error) throw error;
 
-                console.log('Legislator added successfully:', data);
-                legislators[party].push(data[0]);
-                document.getElementById('legislatorName').value = '';
-                renderLegislators();
+                factions[party].push(data[0]);
+                document.getElementById('factionName').value = '';
+                document.getElementById('factionSenateCount').value = '0';
+                document.getElementById('factionHouseCount').value = '0';
+                
+                updateFactionSelectors();
+                renderAll();
                 updateResults();
 
             } catch (error) {
-                console.error('Error adding legislator:', error);
-                alert('Failed to add legislator: ' + error.message);
+                console.error('Error adding faction:', error);
+                alert('Failed to add faction: ' + error.message);
             }
         }
 
-        async function removeLegislator(party, id) {
+        function showAddFaction(party) {
+            document.getElementById('factionParty').value = party;
+            document.getElementById('factionName').focus();
+        }
+
+        function updateFactionSelectors() {
+            const senatorFactionSelect = document.getElementById('senatorFaction');
+            senatorFactionSelect.innerHTML = '<option value="">Select faction...</option>';
+            
+            ['republican', 'democrat'].forEach(party => {
+                factions[party].forEach(faction => {
+                    const option = document.createElement('option');
+                    option.value = faction.id;
+                    option.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
+                    senatorFactionSelect.appendChild(option);
+                });
+            });
+        }
+
+        // ===== SENATOR MANAGEMENT =====
+        async function addSenator() {
+            const name = document.getElementById('senatorName').value.trim();
+            const party = document.getElementById('senatorParty').value;
+            const factionId = document.getElementById('senatorFaction').value;
+
+            if (!name || !currentSessionId) {
+                alert('Please enter a senator name and select a session');
+                return;
+            }
+
             try {
-                const { error } = await supabase
-                    .from('legislators')
-                    .delete()
-                    .eq('id', id);
+                const { data, error } = await supabase
+                    .from('senators')
+                    .insert([{
+                        session_id: currentSessionId,
+                        name: name,
+                        party: party,
+                        faction_id: factionId || null
+                    }])
+                    .select();
 
                 if (error) throw error;
 
-                // Also delete votes
-                await supabase
-                    .from('votes')
-                    .delete()
-                    .eq('legislator_id', id);
-
-                legislators[party] = legislators[party].filter(leg => leg.id !== id);
-                delete votes[id];
-                renderLegislators();
+                senators[party].push(data[0]);
+                document.getElementById('senatorName').value = '';
+                
+                renderAll();
                 updateResults();
 
             } catch (error) {
-                console.error('Error removing legislator:', error);
-                alert('Failed to remove legislator');
+                console.error('Error adding senator:', error);
+                alert('Failed to add senator: ' + error.message);
             }
         }
 
         // ===== VOTING =====
-        async function vote(legislatorId, voteType) {
+        async function vote(id, voteType, isSenator = false) {
             if (!currentSessionId) {
-                alert('No session selected. Please select a session first.');
+                alert('No session selected');
                 return;
             }
 
-            console.log('Recording vote:', { legislatorId, voteType, sessionId: currentSessionId });
-
             try {
-                // First try to delete any existing vote for this legislator in this session
-                const { error: deleteError } = await supabase
-                    .from('votes')
+                const table = issenator ? 'senator_votes' : 'faction_votes';
+                const idField = issenator ? 'senator_id' : 'faction_id';
+                
+                // Delete existing vote
+                await supabase
+                    .from(table)
                     .delete()
                     .eq('session_id', currentSessionId)
-                    .eq('legislator_id', legislatorId);
+                    .eq(idField, id);
 
-                if (deleteError) {
-                    console.warn('Error deleting existing vote (might not exist):', deleteError);
-                }
-
-                // Now insert the new vote
+                // Insert new vote
                 const { data, error } = await supabase
-                    .from('votes')
+                    .from(table)
                     .insert([{
                         session_id: currentSessionId,
-                        legislator_id: legislatorId,
+                        [idField]: id,
                         vote_type: voteType
                     }])
                     .select();
 
-                if (error) {
-                    console.error('Database error recording vote:', error);
-                    throw error;
-                }
+                if (error) throw error;
 
-                console.log('Vote recorded successfully:', data);
-                votes[legislatorId] = voteType;
-                renderLegislators();
+                votes[id] = voteType;
+                renderAll();
                 updateResults();
 
             } catch (error) {
@@ -903,130 +1148,106 @@
             }
         }
 
-        async function clearAllVotes() {
-            if (!confirm('Are you sure you want to clear all votes?')) return;
-            
-            if (!currentSessionId) {
-                alert('No session selected');
-                return;
-            }
-
-            console.log('Clearing all votes for session:', currentSessionId);
-
-            try {
-                const { error } = await supabase
-                    .from('votes')
-                    .delete()
-                    .eq('session_id', currentSessionId);
-
-                if (error) {
-                    console.error('Error clearing votes:', error);
-                    throw error;
-                }
-
-                console.log('All votes cleared successfully');
-                votes = {};
-                renderLegislators();
-                updateResults();
-
-            } catch (error) {
-                console.error('Error clearing votes:', error);
-                alert('Failed to clear votes: ' + error.message);
-            }
-        }
-
         // ===== RENDERING =====
-        function renderLegislators() {
-            renderPartyLegislators('republican');
-            renderPartyLegislators('democrat');
+        function renderAll() {
+            renderSenators();
+            renderHouseFactions();
             updateSeatCounts();
         }
 
-        function renderPartyLegislators(party) {
-            const container = document.getElementById(party === 'republican' ? 'republicanLegislators' : 'democratLegislators');
-            
-            container.innerHTML = legislators[party].map(legislator => `
-                <div class="legislator-item">
-                    <div class="legislator-name">
-                        ${legislator.name} (${legislator.chamber.toUpperCase()})
+        function renderSenators() {
+            ['republican', 'democrat'].forEach(party => {
+                const container = document.getElementById(party === 'republican' ? 'republicanSenators' : 'democratSenators');
+                
+                container.innerHTML = senators[party].map(senator => {
+                    const faction = factions[party].find(f => f.id === senator.faction_id);
+                    const factionName = faction ? faction.name : 'No Faction';
+                    
+                    return `
+                        <div class="faction-item">
+                            <div class="faction-info">
+                                <div class="faction-name">${senator.name}</div>
+                                <div class="faction-count">${factionName}</div>
+                            </div>
+                            <div class="vote-buttons">
+                                <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
+                                        onclick="vote(${senator.id}, 'aye', true)">AYE</button>
+                                <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
+                                        onclick="vote(${senator.id}, 'nay', true)">NAY</button>
+                                <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
+                                        onclick="vote(${senator.id}, 'pres', true)">PRES</button>
+                            </div>
+                            <button class="delete-btn" onclick="removeSenator('${party}', ${senator.id})">×</button>
+                        </div>
+                    `;
+                }).join('');
+            });
+        }
+
+        function renderHouseFactions() {
+            ['republican', 'democrat'].forEach(party => {
+                const container = document.getElementById(party === 'republican' ? 'republicanHouseFactions' : 'democratHouseFactions');
+                
+                container.innerHTML = factions[party].filter(f => f.house_count > 0).map(faction => `
+                    <div class="faction-item">
+                        <div class="faction-info">
+                            <div class="faction-name">${faction.name}</div>
+                            <div class="faction-count">${faction.house_count} members</div>
+                        </div>
+                        <div class="vote-buttons">
+                            <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
+                                    onclick="vote(${faction.id}, 'aye', false)">AYE</button>
+                            <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
+                                    onclick="vote(${faction.id}, 'nay', false)">NAY</button>
+                            <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
+                                    onclick="vote(${faction.id}, 'pres', false)">PRES</button>
+                        </div>
+                        <button class="delete-btn" onclick="removeFaction('${party}', ${faction.id})">×</button>
                     </div>
-                    <div class="vote-buttons">
-                        <button class="vote-btn aye ${votes[legislator.id] === 'aye' ? 'active' : ''}" 
-                                onclick="console.log('Voting AYE for legislator ${legislator.id}'); vote(${legislator.id}, 'aye')">AYE</button>
-                        <button class="vote-btn nay ${votes[legislator.id] === 'nay' ? 'active' : ''}" 
-                                onclick="console.log('Voting NAY for legislator ${legislator.id}'); vote(${legislator.id}, 'nay')">NAY</button>
-                        <button class="vote-btn pres ${votes[legislator.id] === 'pres' ? 'active' : ''}" 
-                                onclick="console.log('Voting PRES for legislator ${legislator.id}'); vote(${legislator.id}, 'pres')">PRES</button>
-                    </div>
-                    <button class="delete-btn" onclick="removeLegislator('${party}', ${legislator.id})">×</button>
-                </div>
-            `).join('');
+                `).join('');
+            });
         }
 
         function updateSeatCounts() {
-            const repSenate = legislators.republican.filter(l => l.chamber === 'senate').length;
-            const repHouse = legislators.republican.filter(l => l.chamber === 'house').length;
-            const demSenate = legislators.democrat.filter(l => l.chamber === 'senate').length;
-            const demHouse = legislators.democrat.filter(l => l.chamber === 'house').length;
+            const repSenateCurrent = senators.republican.length;
+            const demSenateCurrent = senators.democrat.length;
+            const repHouseCurrent = factions.republican.reduce((sum, f) => sum + f.house_count, 0);
+            const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + f.house_count, 0);
 
-            document.getElementById('repSenateCount').textContent = repSenate;
-            document.getElementById('repHouseCount').textContent = repHouse;
-            document.getElementById('demSenateCount').textContent = demSenate;
-            document.getElementById('demHouseCount').textContent = demHouse;
+            document.getElementById('repSenateCurrent').textContent = repSenateCurrent;
+            document.getElementById('demSenateCurrent').textContent = demSenateCurrent;
+            document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
+            document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
         }
 
+        // ===== CALCULATIONS =====
         function calculateResults() {
             const results = {
-                republican: { senate: { aye: 0, nay: 0, pres: 0, total: 0 }, house: { aye: 0, nay: 0, pres: 0, total: 0 } },
-                democrat: { senate: { aye: 0, nay: 0, pres: 0, total: 0 }, house: { aye: 0, nay: 0, pres: 0, total: 0 } }
-            };
-
-            // Count actual votes
-            ['republican', 'democrat'].forEach(party => {
-                legislators[party].forEach(legislator => {
-                    const vote = votes[legislator.id];
-                    const chamber = legislator.chamber;
-                    
-                    if (vote) {
-                        results[party][chamber][vote]++;
-                        results[party][chamber].total++;
-                    }
-                });
-            });
-
-            // Get total party sizes
-            const partySizes = {
-                republican: { 
-                    senate: parseInt(document.getElementById('repSenateCount').textContent),
-                    house: parseInt(document.getElementById('repHouseCount').textContent)
-                },
-                democrat: { 
-                    senate: parseInt(document.getElementById('demSenateCount').textContent),
-                    house: parseInt(document.getElementById('demHouseCount').textContent)
-                }
-            };
-
-            // Scale results proportionally
-            const scaledResults = {
                 republican: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } },
                 democrat: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } }
             };
 
+            // Calculate Senate results (individual senators)
             ['republican', 'democrat'].forEach(party => {
-                ['senate', 'house'].forEach(chamber => {
-                    const totalVotes = results[party][chamber].total;
-                    const totalSeats = partySizes[party][chamber];
-                    
-                    if (totalVotes > 0) {
-                        ['aye', 'nay', 'pres'].forEach(voteType => {
-                            scaledResults[party][chamber][voteType] = 
-                                Math.round((results[party][chamber][voteType] / totalVotes) * totalSeats);
-                        });
+                senators[party].forEach(senator => {
+                    const vote = votes[senator.id];
+                    if (vote) {
+                        results[party].senate[vote]++;
                     }
                 });
             });
 
-            return scaledResults;
+            // Calculate House results (faction-based)
+            ['republican', 'democrat'].forEach(party => {
+                factions[party].forEach(faction => {
+                    const vote = votes[faction.id];
+                    if (vote && faction.house_count > 0) {
+                        results[party].house[vote] += faction.house_count;
+                    }
+                });
+            });
+
+            return results;
         }
 
         function updateResults() {
@@ -1065,15 +1286,59 @@
                 results.republican.house.pres + results.democrat.house.pres;
         }
 
+        // ===== DELETION FUNCTIONS =====
+        async function removeFaction(party, id) {
+            try {
+                await supabase.from('factions').delete().eq('id', id);
+                factions[party] = factions[party].filter(f => f.id !== id);
+                delete votes[id];
+                updateFactionSelectors();
+                renderAll();
+                updateResults();
+            } catch (error) {
+                console.error('Error removing faction:', error);
+                alert('Failed to remove faction: ' + error.message);
+            }
+        }
+
+        async function removeSenator(party, id) {
+            try {
+                await supabase.from('senators').delete().eq('id', id);
+                senators[party] = senators[party].filter(s => s.id !== id);
+                delete votes[id];
+                renderAll();
+                updateResults();
+            } catch (error) {
+                console.error('Error removing senator:', error);
+                alert('Failed to remove senator: ' + error.message);
+            }
+        }
+
         // ===== UTILITY FUNCTIONS =====
-        function showAddLegislator(party) {
-            document.getElementById('legislatorParty').value = party;
-            document.getElementById('legislatorName').focus();
+        async function clearAllVotes() {
+            if (!confirm('Are you sure you want to clear all votes?')) return;
+            
+            if (!currentSessionId) {
+                alert('No session selected');
+                return;
+            }
+
+            try {
+                await supabase.from('faction_votes').delete().eq('session_id', currentSessionId);
+                await supabase.from('senator_votes').delete().eq('session_id', currentSessionId);
+                
+                votes = {};
+                renderAll();
+                updateResults();
+
+            } catch (error) {
+                console.error('Error clearing votes:', error);
+                alert('Failed to clear votes: ' + error.message);
+            }
         }
 
         async function reloadCurrentSession() {
             if (currentSessionId) {
-                console.log('Reloading current session:', currentSessionId);
                 await loadSession(currentSessionId);
             } else {
                 alert('No session currently selected');
@@ -1090,7 +1355,9 @@
             const exportData = {
                 session_id: currentSessionId,
                 timestamp: new Date().toISOString(),
-                legislators: legislators,
+                party_seats: partySeats,
+                factions: factions,
+                senators: senators,
                 votes: votes,
                 results: results
             };
@@ -1107,15 +1374,6 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
-
-        // Allow Enter key to add legislator
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('legislatorName').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    addLegislator();
-                }
-            });
-        });
 
         // Initialize the application
         initializeApp();
