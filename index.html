@@ -792,26 +792,101 @@
 
         // ===== INITIALIZATION =====
         async function initializeApp() {
+            console.log('Starting app initialization...');
+            
             try {
                 // Initialize Supabase
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Test connection
-                const { data, error } = await supabase.from('sessions').select('count').limit(1);
+                // Test connection with very short timeout (3 seconds)
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Connection timeout after 3 seconds')), 3000)
+                );
+                
+                console.log('Testing database connection...');
+                const testPromise = supabase.from('sessions').select('count').limit(1);
+                
+                const { data, error } = await Promise.race([testPromise, timeoutPromise]);
                 
                 if (error) throw error;
                 
+                console.log('✅ Database connection successful');
                 updateConnectionStatus('connected');
                 await loadSessions();
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
                 
             } catch (error) {
-                console.error('Failed to initialize:', error);
+                console.error('❌ Database connection failed:', error.message);
+                console.log('🔄 Switching to offline demo mode...');
+                
+                // Switch to offline mode immediately
                 updateConnectionStatus('error');
-                document.getElementById('loading').innerHTML = 
-                    '❌ Database connection failed. Running in offline mode.<br><button onclick="location.reload()">Retry</button>';
+                initializeOfflineMode();
             }
+            
+            // Always show the app (even in offline mode)
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+        }
+
+        // ===== OFFLINE MODE =====
+        function initializeOfflineMode() {
+            console.log('🚀 Running in offline demo mode');
+            currentSessionId = 'offline';
+            
+            // Load comprehensive sample data for offline testing
+            factions = {
+                republican: [
+                    { id: 1, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
+                    { id: 2, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
+                    { id: 3, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 }
+                ],
+                democrat: [
+                    { id: 4, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
+                    { id: 5, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
+                    { id: 6, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
+                ]
+            };
+            
+            senators = {
+                republican: [
+                    { id: 11, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: 3 },
+                    { id: 12, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: 3 },
+                    { id: 13, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: 1 },
+                    { id: 14, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: 2 },
+                    { id: 15, name: 'Rand Paul (R-KY)', party: 'republican', role: 'senator', faction_id: 1 },
+                    { id: 16, name: 'Lisa Murkowski (R-AK)', party: 'republican', role: 'senator', faction_id: 2 }
+                ],
+                democrat: [
+                    { id: 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: 6 },
+                    { id: 22, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: 6 },
+                    { id: 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: 4 },
+                    { id: 24, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: 5 },
+                    { id: 25, name: 'Elizabeth Warren (D-MA)', party: 'democrat', role: 'senator', faction_id: 4 },
+                    { id: 26, name: 'Jon Tester (D-MT)', party: 'democrat', role: 'senator', faction_id: 5 }
+                ]
+            };
+            
+            votes = {};
+            
+            // Set current session display
+            document.getElementById('currentSession').textContent = 'Active: Offline Demo Mode (Database Unavailable)';
+            
+            // Add retry option to session selector
+            const sessionSelect = document.getElementById('sessionSelect');
+            sessionSelect.innerHTML = `
+                <option value="">📴 Database Offline - Using Demo Data</option>
+                <option value="retry">🔄 Retry Database Connection</option>
+            `;
+            
+            updateFactionSelectors();
+            renderAll();
+            updateResults();
+            
+            console.log('✅ Offline demo mode ready!');
+            console.log('📊 Loaded senators with weighted voting:');
+            console.log('- McConnell (Party Leader): 12.25 votes');
+            console.log('- Schumer (Party Leader): 12.5 votes');
+            console.log('- Cruz (Caucus Chair): 7.35 votes');
         }
 
         function updateConnectionStatus(status) {
@@ -886,8 +961,21 @@
         }
 
         async function loadSession(sessionId) {
-            if (!sessionId) {
-                console.log('No session ID provided');
+            if (sessionId === 'retry') {
+                // User wants to retry database connection
+                console.log('🔄 Retrying database connection...');
+                document.getElementById('currentSession').textContent = 'Retrying connection...';
+                updateConnectionStatus('loading');
+                
+                // Reset and try again
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+                return;
+            }
+            
+            if (!sessionId || sessionId === 'offline') {
+                console.log('No session ID provided or offline mode');
                 return;
             }
             
@@ -1152,7 +1240,7 @@
 
         // ===== VOTE WEIGHT CALCULATIONS =====
         function calculateSenatorVoteWeight(senator, party) {
-            const partySeats = partySeats[party].senate;
+            const totalPartySeats = partySeats[party].senate;
             const partyFactions = factions[party].filter(f => f.senate_count > 0);
             
             // Sort factions by size for caucus chair hierarchy
@@ -1160,34 +1248,38 @@
             
             switch(senator.role) {
                 case 'party_leader':
-                    return partySeats * 0.25; // 25%
+                    return totalPartySeats * 0.25; // 25%
                 case 'party_whip':
-                    return partySeats * 0.20; // 20%
+                    return totalPartySeats * 0.20; // 20%
                 case 'caucus_chair':
                     // Determine caucus chair weight based on faction size ranking
                     const senatorFaction = factions[party].find(f => f.id === senator.faction_id);
                     if (!senatorFaction) return 0;
                     
                     const factionRank = sortedFactions.findIndex(f => f.id === senatorFaction.id);
-                    if (factionRank === 0) return partySeats * 0.15; // Largest caucus: 15%
-                    if (factionRank === 1) return partySeats * 0.10; // Middle caucus: 10%
-                    if (factionRank === 2) return partySeats * 0.05; // Smallest caucus: 5%
+                    if (factionRank === 0) return totalPartySeats * 0.15; // Largest caucus: 15%
+                    if (factionRank === 1) return totalPartySeats * 0.10; // Middle caucus: 10%
+                    if (factionRank === 2) return totalPartySeats * 0.05; // Smallest caucus: 5%
                     return 0; // No weight if more than 3 factions
                 case 'senator':
                 default:
                     // Regular senators share remaining 25% of votes
                     const remainingPercentage = 0.25;
                     const regularSenators = senators[party].filter(s => s.role === 'senator');
+                    if (regularSenators.length === 0) return 0;
+                    
                     const senatorFaction = factions[party].find(f => f.id === senator.faction_id);
                     
                     if (!senatorFaction) {
                         // If no faction, share equally among all regular senators in party
-                        return (partySeats * remainingPercentage) / regularSenators.length;
+                        return (totalPartySeats * remainingPercentage) / regularSenators.length;
                     } else {
                         // Share within faction first, then party
                         const factionRegularSenators = regularSenators.filter(s => s.faction_id === senator.faction_id);
-                        const factionWeight = senatorFaction.senate_count / partySeats;
-                        return (partySeats * remainingPercentage * factionWeight) / factionRegularSenators.length;
+                        if (factionRegularSenators.length === 0) return 0;
+                        
+                        const factionWeight = senatorFaction.senate_count / totalPartySeats;
+                        return (totalPartySeats * remainingPercentage * factionWeight) / factionRegularSenators.length;
                     }
             }
         }
