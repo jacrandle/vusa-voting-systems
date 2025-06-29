@@ -583,7 +583,9 @@
             <div class="chamber-section">
                 <div class="chamber-header">
                     <div class="chamber-title">🏛️ Senate (Individual Votes)</div>
-                    <div style="font-size: 14px; color: #666;">Add individual senators and their factions</div>
+                    <div style="font-size: 14px; color: #666;">
+                        ⚠️ Senate votes are individual - each senator = 1 vote
+                    </div>
                 </div>
                 
                 <div class="control-row" style="margin-bottom: 20px;">
@@ -974,21 +976,29 @@
                 }
             };
             
+            console.log('Updated party seats:', partySeats);
+            
+            // Update all displays throughout the interface
             updatePartySeatsDisplay();
+            updateSeatCounts();
             savePartySeats();
             updateResults();
         }
 
         function updatePartySeatsDisplay() {
+            // Update the input fields (in case called from elsewhere)
             document.getElementById('repSenateSeats').value = partySeats.republican.senate;
             document.getElementById('repHouseSeats').value = partySeats.republican.house;
             document.getElementById('demSenateSeats').value = partySeats.democrat.senate;
             document.getElementById('demHouseSeats').value = partySeats.democrat.house;
             
+            // Update the total seat displays in the chamber sections
             document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
             document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
             document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
             document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
+            
+            console.log('Updated all party seat displays');
         }
 
         async function savePartySeats() {
@@ -1169,15 +1179,15 @@
                         <div class="faction-item">
                             <div class="faction-info">
                                 <div class="faction-name">${senator.name}</div>
-                                <div class="faction-count">${factionName}</div>
+                                <div class="faction-count">Faction: ${factionName}</div>
                             </div>
                             <div class="vote-buttons">
                                 <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
-                                        onclick="vote(${senator.id}, 'aye', true)">AYE</button>
+                                        onclick="console.log('Senate vote: ${senator.name}'); vote(${senator.id}, 'aye', true)">AYE</button>
                                 <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
-                                        onclick="vote(${senator.id}, 'nay', true)">NAY</button>
+                                        onclick="console.log('Senate vote: ${senator.name}'); vote(${senator.id}, 'nay', true)">NAY</button>
                                 <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
-                                        onclick="vote(${senator.id}, 'pres', true)">PRES</button>
+                                        onclick="console.log('Senate vote: ${senator.name}'); vote(${senator.id}, 'pres', true)">PRES</button>
                             </div>
                             <button class="delete-btn" onclick="removeSenator('${party}', ${senator.id})">×</button>
                         </div>
@@ -1194,15 +1204,15 @@
                     <div class="faction-item">
                         <div class="faction-info">
                             <div class="faction-name">${faction.name}</div>
-                            <div class="faction-count">${faction.house_count} members</div>
+                            <div class="faction-count">${faction.house_count} House members</div>
                         </div>
                         <div class="vote-buttons">
                             <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
-                                    onclick="vote(${faction.id}, 'aye', false)">AYE</button>
+                                    onclick="console.log('House faction vote: ${faction.name} (${faction.house_count} members)'); vote(${faction.id}, 'aye', false)">AYE</button>
                             <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
-                                    onclick="vote(${faction.id}, 'nay', false)">NAY</button>
+                                    onclick="console.log('House faction vote: ${faction.name} (${faction.house_count} members)'); vote(${faction.id}, 'nay', false)">NAY</button>
                             <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
-                                    onclick="vote(${faction.id}, 'pres', false)">PRES</button>
+                                    onclick="console.log('House faction vote: ${faction.name} (${faction.house_count} members)'); vote(${faction.id}, 'pres', false)">PRES</button>
                         </div>
                         <button class="delete-btn" onclick="removeFaction('${party}', ${faction.id})">×</button>
                     </div>
@@ -1211,15 +1221,32 @@
         }
 
         function updateSeatCounts() {
+            // Count current senators (for Senate)
             const repSenateCurrent = senators.republican.length;
             const demSenateCurrent = senators.democrat.length;
-            const repHouseCurrent = factions.republican.reduce((sum, f) => sum + f.house_count, 0);
-            const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + f.house_count, 0);
+            
+            // Count current faction members (for House)
+            const repHouseCurrent = factions.republican.reduce((sum, f) => sum + (f.house_count || 0), 0);
+            const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + (f.house_count || 0), 0);
 
+            // Update current count displays
             document.getElementById('repSenateCurrent').textContent = repSenateCurrent;
             document.getElementById('demSenateCurrent').textContent = demSenateCurrent;
             document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
             document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
+            
+            // Update total count displays (from party seats configuration)
+            document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
+            document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
+            document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
+            document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
+            
+            console.log('Seat counts updated:', {
+                repSenate: `${repSenateCurrent}/${partySeats.republican.senate}`,
+                demSenate: `${demSenateCurrent}/${partySeats.democrat.senate}`,
+                repHouse: `${repHouseCurrent}/${partySeats.republican.house}`,
+                demHouse: `${demHouseCurrent}/${partySeats.democrat.house}`
+            });
         }
 
         // ===== CALCULATIONS =====
@@ -1229,7 +1256,7 @@
                 democrat: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } }
             };
 
-            // Calculate Senate results (individual senators)
+            // Calculate Senate results ONLY from individual senators (never from factions)
             ['republican', 'democrat'].forEach(party => {
                 senators[party].forEach(senator => {
                     const vote = votes[senator.id];
@@ -1239,7 +1266,7 @@
                 });
             });
 
-            // Calculate House results (faction-based)
+            // Calculate House results ONLY from factions (never from senators)
             ['republican', 'democrat'].forEach(party => {
                 factions[party].forEach(faction => {
                     const vote = votes[faction.id];
