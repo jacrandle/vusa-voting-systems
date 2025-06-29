@@ -858,31 +858,60 @@
 
         // ===== VOTING =====
         async function vote(legislatorId, voteType) {
-            if (!currentSessionId) return;
+            if (!currentSessionId) {
+                alert('No session selected. Please select a session first.');
+                return;
+            }
+
+            console.log('Recording vote:', { legislatorId, voteType, sessionId: currentSessionId });
 
             try {
-                const { error } = await supabase
+                // First try to delete any existing vote for this legislator in this session
+                const { error: deleteError } = await supabase
                     .from('votes')
-                    .upsert([{
+                    .delete()
+                    .eq('session_id', currentSessionId)
+                    .eq('legislator_id', legislatorId);
+
+                if (deleteError) {
+                    console.warn('Error deleting existing vote (might not exist):', deleteError);
+                }
+
+                // Now insert the new vote
+                const { data, error } = await supabase
+                    .from('votes')
+                    .insert([{
                         session_id: currentSessionId,
                         legislator_id: legislatorId,
                         vote_type: voteType
-                    }]);
+                    }])
+                    .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database error recording vote:', error);
+                    throw error;
+                }
 
+                console.log('Vote recorded successfully:', data);
                 votes[legislatorId] = voteType;
                 renderLegislators();
                 updateResults();
 
             } catch (error) {
                 console.error('Error recording vote:', error);
-                alert('Failed to record vote');
+                alert('Failed to record vote: ' + error.message);
             }
         }
 
         async function clearAllVotes() {
-            if (!confirm('Are you sure you want to clear all votes?') || !currentSessionId) return;
+            if (!confirm('Are you sure you want to clear all votes?')) return;
+            
+            if (!currentSessionId) {
+                alert('No session selected');
+                return;
+            }
+
+            console.log('Clearing all votes for session:', currentSessionId);
 
             try {
                 const { error } = await supabase
@@ -890,15 +919,19 @@
                     .delete()
                     .eq('session_id', currentSessionId);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Error clearing votes:', error);
+                    throw error;
+                }
 
+                console.log('All votes cleared successfully');
                 votes = {};
                 renderLegislators();
                 updateResults();
 
             } catch (error) {
                 console.error('Error clearing votes:', error);
-                alert('Failed to clear votes');
+                alert('Failed to clear votes: ' + error.message);
             }
         }
 
@@ -919,11 +952,11 @@
                     </div>
                     <div class="vote-buttons">
                         <button class="vote-btn aye ${votes[legislator.id] === 'aye' ? 'active' : ''}" 
-                                onclick="vote(${legislator.id}, 'aye')">AYE</button>
+                                onclick="console.log('Voting AYE for legislator ${legislator.id}'); vote(${legislator.id}, 'aye')">AYE</button>
                         <button class="vote-btn nay ${votes[legislator.id] === 'nay' ? 'active' : ''}" 
-                                onclick="vote(${legislator.id}, 'nay')">NAY</button>
+                                onclick="console.log('Voting NAY for legislator ${legislator.id}'); vote(${legislator.id}, 'nay')">NAY</button>
                         <button class="vote-btn pres ${votes[legislator.id] === 'pres' ? 'active' : ''}" 
-                                onclick="vote(${legislator.id}, 'pres')">PRES</button>
+                                onclick="console.log('Voting PRES for legislator ${legislator.id}'); vote(${legislator.id}, 'pres')">PRES</button>
                     </div>
                     <button class="delete-btn" onclick="removeLegislator('${party}', ${legislator.id})">×</button>
                 </div>
