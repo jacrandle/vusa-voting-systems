@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Voting System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .session-info {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .session-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .controls {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .control-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .voting-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .party-section {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .party-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid;
+        }
+
+        .republican-section .party-header {
+            border-color: #dc3545;
+        }
+
+        .democrat-section .party-header {
+            border-color: #007bff;
+        }
+
+        .party-title {
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+
+        .republican-section .party-title {
+            color: #dc3545;
+        }
+
+        .democrat-section .party-title {
+            color: #007bff;
+        }
+
+        .seat-count {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .legislator-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .legislator-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .legislator-name {
+            flex: 1;
+            font-weight: 500;
+            margin-right: 15px;
+        }
+
+        .vote-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .vote-btn {
+            width: 50px;
+            padding: 8px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .vote-btn.aye {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .vote-btn.nay {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .vote-btn.pres {
+            background: #ffc107;
+            color: #212529;
+            border-color: #ffc107;
+        }
+
+        .vote-btn:not(.active) {
+            background: white;
+            color: #666;
+        }
+
+        .vote-btn.aye:not(.active) {
+            border-color: #28a745;
+            color: #28a745;
+        }
+
+        .vote-btn.nay:not(.active) {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .vote-btn.pres:not(.active) {
+            border-color: #ffc107;
+            color: #f39c12;
+        }
+
+        .vote-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .results-section {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .chamber-results {
+            text-align: center;
+        }
+
+        .chamber-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+
+        .results-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .rep-row {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .dem-row {
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        .total-row {
+            background: #e9ecef;
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .add-legislator {
+            background: rgba(40, 167, 69, 0.1);
+            border: 2px dashed #28a745;
+            color: #28a745;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .add-legislator:hover {
+            background: rgba(40, 167, 69, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .voting-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-row {
+                flex-direction: column;
+            }
+            
+            .control-group {
+                min-width: 100%;
+            }
+
+            .session-info {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            margin-top: 10px;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+            margin-top: 10px;
+        }
+
+        .session-btn {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        🚀 Connecting to database...
+    </div>
+
+    <div id="app" class="container" style="display: none;">
+        <div class="header">
+            <h1>📊 Interactive Voting System</h1>
+            <p>Advanced Congressional Vote Tracking with Real-time Database</p>
+        </div>
+
+        <div class="session-info">
+            <div class="session-selector">
+                <label for="sessionSelect" style="margin: 0; margin-right: 10px;">Session:</label>
+                <select id="sessionSelect" style="width: 200px;" onchange="loadSession(this.value)">
+                    <option value="">Select a session...</option>
+                </select>
+                <button onclick="createNewSession()" class="session-btn" style="width: 150px;">New Session</button>
+            </div>
+            <div id="connectionStatus" class="status-indicator status-loading">
+                Connecting...
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="legislatorName">Add New Legislator</label>
+                    <input type="text" id="legislatorName" placeholder="Enter legislator name">
+                </div>
+                <div class="control-group">
+                    <label for="legislatorParty">Party</label>
+                    <select id="legislatorParty">
+                        <option value="republican">Republican</option>
+                        <option value="democrat">Democrat</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="legislatorChamber">Chamber</label>
+                    <select id="legislatorChamber">
+                        <option value="senate">Senate</option>
+                        <option value="house">House</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>&nbsp;</label>
+                    <button onclick="addLegislator()" id="addBtn">Add Legislator</button>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <button onclick="exportResults()" class="export-btn" id="exportBtn">Export Results</button>
+                </div>
+                <div class="control-group">
+                    <button onclick="clearAllVotes()" class="clear-btn" id="clearBtn">Clear All Votes</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="voting-section">
+            <div class="party-section republican-section">
+                <div class="party-header">
+                    <span class="party-title">🔴 Republicans</span>
+                    <div class="seat-count">
+                        Senate: <span id="repSenateCount">0</span> | 
+                        House: <span id="repHouseCount">0</span>
+                    </div>
+                </div>
+                <div id="republicanLegislators"></div>
+                <div class="add-legislator" onclick="showAddLegislator('republican')">
+                    + Add Republican Legislator
+                </div>
+            </div>
+
+            <div class="party-section democrat-section">
+                <div class="party-header">
+                    <span class="party-title">🔵 Democrats</span>
+                    <div class="seat-count">
+                        Senate: <span id="demSenateCount">0</span> | 
+                        House: <span id="demHouseCount">0</span>
+                    </div>
+                </div>
+                <div id="democratLegislators"></div>
+                <div class="add-legislator" onclick="showAddLegislator('democrat')">
+                    + Add Democrat Legislator
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">📈 Voting Results</h2>
+            <div class="results-grid">
+                <div class="chamber-results">
+                    <h3 class="chamber-title">🏛️ Senate Results</h3>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Party</th>
+                                <th>AYE</th>
+                                <th>NAY</th>
+                                <th>PRESENT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="rep-row">
+                                <td>Republican</td>
+                                <td id="repSenateAye">0</td>
+                                <td id="repSenateNay">0</td>
+                                <td id="repSenatePres">0</td>
+                            </tr>
+                            <tr class="dem-row">
+                                <td>Democrat</td>
+                                <td id="demSenateAye">0</td>
+                                <td id="demSenateNay">0</td>
+                                <td id="demSenatePres">0</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td><strong>TOTAL</strong></td>
+                                <td id="totalSenateAye">0</td>
+                                <td id="totalSenateNay">0</td>
+                                <td id="totalSenatePres">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="chamber-results">
+                    <h3 class="chamber-title">🏢 House Results</h3>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Party</th>
+                                <th>AYE</th>
+                                <th>NAY</th>
+                                <th>PRESENT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="rep-row">
+                                <td>Republican</td>
+                                <td id="repHouseAye">0</td>
+                                <td id="repHouseNay">0</td>
+                                <td id="repHousePres">0</td>
+                            </tr>
+                            <tr class="dem-row">
+                                <td>Democrat</td>
+                                <td id="demHouseAye">0</td>
+                                <td id="demHouseNay">0</td>
+                                <td id="demHousePres">0</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td><strong>TOTAL</strong></td>
+                                <td id="totalHouseAye">0</td>
+                                <td id="totalHouseNay">0</td>
+                                <td id="totalHousePres">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ===== CONFIGURATION =====
+        // Your Supabase credentials
+        const SUPABASE_URL = 'https://spjvpxbiwfjjvxvltuot.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwanZweGJpd2ZqanZ4dmx0dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNTk5MTYsImV4cCI6MjA2NjczNTkxNn0.vb-VK0klRqcgwQ_6kBC4fs-hezl0P6XxjfODt9DEsck';
+
+        // Initialize Supabase client
+        let supabase;
+        let currentSessionId = null;
+        let legislators = { republican: [], democrat: [] };
+        let votes = {};
+
+        // ===== INITIALIZATION =====
+        async function initializeApp() {
+            try {
+                // Initialize Supabase
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Test connection
+                const { data, error } = await supabase.from('sessions').select('count').limit(1);
+                
+                if (error) throw error;
+                
+                updateConnectionStatus('connected');
+                await loadSessions();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                updateConnectionStatus('error');
+                // Show fallback mode
+                document.getElementById('loading').innerHTML = 
+                    '❌ Database connection failed. Running in offline mode.<br><button onclick="location.reload()">Retry</button>';
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = 'status-indicator status-' + status;
+            
+            switch(status) {
+                case 'connected':
+                    statusEl.textContent = '✅ Connected';
+                    break;
+                case 'loading':
+                    statusEl.textContent = '⏳ Loading...';
+                    break;
+                case 'error':
+                    statusEl.textContent = '❌ Disconnected';
+                    break;
+            }
+        }
+
+        // ===== SESSION MANAGEMENT =====
+        async function loadSessions() {
+            try {
+                const { data, error } = await supabase
+                    .from('sessions')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const select = document.getElementById('sessionSelect');
+                select.innerHTML = '<option value="">Select a session...</option>';
+                
+                data.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.id;
+                    option.textContent = `${session.name} (${new Date(session.created_at).toLocaleDateString()})`;
+                    select.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+            }
+        }
+
+        async function createNewSession() {
+            const name = prompt('Enter session name:');
+            if (!name) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('sessions')
+                    .insert([{ name: name }])
+                    .select();
+                
+                if (error) throw error;
+                
+                await loadSessions();
+                document.getElementById('sessionSelect').value = data[0].id;
+                await loadSession(data[0].id);
+                
+            } catch (error) {
+                console.error('Error creating session:', error);
+                alert('Failed to create session');
+            }
+        }
+
+        async function loadSession(sessionId) {
+            if (!sessionId) return;
+            
+            currentSessionId = sessionId;
+            updateConnectionStatus('loading');
+            
+            try {
+                // Load legislators
+                const { data: legislatorData, error: legError } = await supabase
+                    .from('legislators')
+                    .select('*')
+                    .eq('session_id', sessionId);
+                
+                if (legError) throw legError;
+                
+                // Load votes
+                const { data: voteData, error: voteError } = await supabase
+                    .from('votes')
+                    .select('*')
+                    .eq('session_id', sessionId);
+                
+                if (voteError) throw voteError;
+                
+                // Organize data
+                legislators = { republican: [], democrat: [] };
+                votes = {};
+                
+                legislatorData.forEach(leg => {
+                    legislators[leg.party].push(leg);
+                });
+                
+                voteData.forEach(vote => {
+                    votes[vote.legislator_id] = vote.vote_type;
+                });
+                
+                renderLegislators();
+                updateResults();
+                updateConnectionStatus('connected');
+                
+            } catch (error) {
+                console.error('Error loading session:', error);
+                updateConnectionStatus('error');
+            }
+        }
+
+        // ===== LEGISLATOR MANAGEMENT =====
+        async function addLegislator() {
+            const name = document.getElementById('legislatorName').value.trim();
+            const party = document.getElementById('legislatorParty').value;
+            const chamber = document.getElementById('legislatorChamber').value;
+
+            if (!name || !currentSessionId) {
+                alert('Please enter a name and select a session');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('legislators')
+                    .insert([{
+                        session_id: currentSessionId,
+                        name: name,
+                        party: party,
+                        chamber: chamber
+                    }])
+                    .select();
+
+                if (error) throw error;
+
+                legislators[party].push(data[0]);
+                document.getElementById('legislatorName').value = '';
+                renderLegislators();
+                updateResults();
+
+            } catch (error) {
+                console.error('Error adding legislator:', error);
+                alert('Failed to add legislator');
+            }
+        }
+
+        async function removeLegislator(party, id) {
+            try {
+                const { error } = await supabase
+                    .from('legislators')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                // Also delete votes
+                await supabase
+                    .from('votes')
+                    .delete()
+                    .eq('legislator_id', id);
+
+                legislators[party] = legislators[party].filter(leg => leg.id !== id);
+                delete votes[id];
+                renderLegislators();
+                updateResults();
+
+            } catch (error) {
+                console.error('Error removing legislator:', error);
+                alert('Failed to remove legislator');
+            }
+        }
+
+        // ===== VOTING =====
+        async function vote(legislatorId, voteType) {
+            if (!currentSessionId) return;
+
+            try {
+                const { error } = await supabase
+                    .from('votes')
+                    .upsert([{
+                        session_id: currentSessionId,
+                        legislator_id: legislatorId,
+                        vote_type: voteType
+                    }]);
+
+                if (error) throw error;
+
+                votes[legislatorId] = voteType;
+                renderLegislators();
+                updateResults();
+
+            } catch (error) {
+                console.error('Error recording vote:', error);
+                alert('Failed to record vote');
+            }
+        }
+
+        async function clearAllVotes() {
+            if (!confirm('Are you sure you want to clear all votes?') || !currentSessionId) return;
+
+            try {
+                const { error } = await supabase
+                    .from('votes')
+                    .delete()
+                    .eq('session_id', currentSessionId);
+
+                if (error) throw error;
+
+                votes = {};
+                renderLegislators();
+                updateResults();
+
+            } catch (error) {
+                console.error('Error clearing votes:', error);
+                alert('Failed to clear votes');
+            }
+        }
+
+        // ===== RENDERING =====
+        function renderLegislators() {
+            renderPartyLegislators('republican');
+            renderPartyLegislators('democrat');
+            updateSeatCounts();
+        }
+
+        function renderPartyLegislators(party) {
+            const container = document.getElementById(party === 'republican' ? 'republicanLegislators' : 'democratLegislators');
+            
+            container.innerHTML = legislators[party].map(legislator => `
+                <div class="legislator-item">
+                    <div class="legislator-name">
+                        ${legislator.name} (${legislator.chamber.toUpperCase()})
+                    </div>
+                    <div class="vote-buttons">
+                        <button class="vote-btn aye ${votes[legislator.id] === 'aye' ? 'active' : ''}" 
+                                onclick="vote(${legislator.id}, 'aye')">AYE</button>
+                        <button class="vote-btn nay ${votes[legislator.id] === 'nay' ? 'active' : ''}" 
+                                onclick="vote(${legislator.id}, 'nay')">NAY</button>
+                        <button class="vote-btn pres ${votes[legislator.id] === 'pres' ? 'active' : ''}" 
+                                onclick="vote(${legislator.id}, 'pres')">PRES</button>
+                    </div>
+                    <button class="delete-btn" onclick="removeLegislator('${party}', ${legislator.id})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function updateSeatCounts() {
+            const repSenate = legislators.republican.filter(l => l.chamber === 'senate').length;
+            const repHouse = legislators.republican.filter(l => l.chamber === 'house').length;
+            const demSenate = legislators.democrat.filter(l => l.chamber === 'senate').length;
+            const demHouse = legislators.democrat.filter(l => l.chamber === 'house').length;
+
+            document.getElementById('repSenateCount').textContent = repSenate;
+            document.getElementById('repHouseCount').textContent = repHouse;
+            document.getElementById('demSenateCount').textContent = demSenate;
+            document.getElementById('demHouseCount').textContent = demHouse;
+        }
+
+        function calculateResults() {
+            const results = {
+                republican: { senate: { aye: 0, nay: 0, pres: 0, total: 0 }, house: { aye: 0, nay: 0, pres: 0, total: 0 } },
+                democrat: { senate: { aye: 0, nay: 0, pres: 0, total: 0 }, house: { aye: 0, nay: 0, pres: 0, total: 0 } }
+            };
+
+            // Count actual votes
+            ['republican', 'democrat'].forEach(party => {
+                legislators[party].forEach(legislator => {
+                    const vote = votes[legislator.id];
+                    const chamber = legislator.chamber;
+                    
+                    if (vote) {
+                        results[party][chamber][vote]++;
+                        results[party][chamber].total++;
+                    }
+                });
+            });
+
+            // Get total party sizes
+            const partySizes = {
+                republican: { 
+                    senate: parseInt(document.getElementById('repSenateCount').textContent),
+                    house: parseInt(document.getElementById('repHouseCount').textContent)
+                },
+                democrat: { 
+                    senate: parseInt(document.getElementById('demSenateCount').textContent),
+                    house: parseInt(document.getElementById('demHouseCount').textContent)
+                }
+            };
+
+            // Scale results proportionally
+            const scaledResults = {
+                republican: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } },
+                democrat: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } }
+            };
+
+            ['republican', 'democrat'].forEach(party => {
+                ['senate', 'house'].forEach(chamber => {
+                    const totalVotes = results[party][chamber].total;
+                    const totalSeats = partySizes[party][chamber];
+                    
+                    if (totalVotes > 0) {
+                        ['aye', 'nay', 'pres'].forEach(voteType => {
+                            scaledResults[party][chamber][voteType] = 
+                                Math.round((results[party][chamber][voteType] / totalVotes) * totalSeats);
+                        });
+                    }
+                });
+            });
+
+            return scaledResults;
+        }
+
+        function updateResults() {
+            const results = calculateResults();
+            
+            // Update Senate results
+            document.getElementById('repSenateAye').textContent = results.republican.senate.aye;
+            document.getElementById('repSenateNay').textContent = results.republican.senate.nay;
+            document.getElementById('repSenatePres').textContent = results.republican.senate.pres;
+            
+            document.getElementById('demSenateAye').textContent = results.democrat.senate.aye;
+            document.getElementById('demSenateNay').textContent = results.democrat.senate.nay;
+            document.getElementById('demSenatePres').textContent = results.democrat.senate.pres;
+            
+            document.getElementById('totalSenateAye').textContent = 
+                results.republican.senate.aye + results.democrat.senate.aye;
+            document.getElementById('totalSenateNay').textContent = 
+                results.republican.senate.nay + results.democrat.senate.nay;
+            document.getElementById('totalSenatePres').textContent = 
+                results.republican.senate.pres + results.democrat.senate.pres;
+
+            // Update House results
+            document.getElementById('repHouseAye').textContent = results.republican.house.aye;
+            document.getElementById('repHouseNay').textContent = results.republican.house.nay;
+            document.getElementById('repHousePres').textContent = results.republican.house.pres;
+            
+            document.getElementById('demHouseAye').textContent = results.democrat.house.aye;
+            document.getElementById('demHouseNay').textContent = results.democrat.house.nay;
+            document.getElementById('demHousePres').textContent = results.democrat.house.pres;
+            
+            document.getElementById('totalHouseAye').textContent = 
+                results.republican.house.aye + results.democrat.house.aye;
+            document.getElementById('totalHouseNay').textContent = 
+                results.republican.house.nay + results.democrat.house.nay;
+            document.getElementById('totalHousePres').textContent = 
+                results.republican.house.pres + results.democrat.house.pres;
+        }
+
+        // ===== UTILITY FUNCTIONS =====
+        function showAddLegislator(party) {
+            document.getElementById('legislatorParty').value = party;
+            document.getElementById('legislatorName').focus();
+        }
+
+        async function exportResults() {
+            if (!currentSessionId) {
+                alert('Please select a session first');
+                return;
+            }
+
+            const results = calculateResults();
+            const exportData = {
+                session_id: currentSessionId,
+                timestamp: new Date().toISOString(),
+                legislators: legislators,
+                votes: votes,
+                results: results
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `voting_results_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Allow Enter key to add legislator
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('legislatorName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addLegislator();
+                }
+            });
+        });
+
+        // Initialize the application
+        initializeApp();
+    </script>
+</body>
+</html>
