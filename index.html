@@ -582,9 +582,9 @@
         <div class="chambers-section">
             <div class="chamber-section">
                 <div class="chamber-header">
-                    <div class="chamber-title">🏛️ Senate (Individual Votes)</div>
+                    <div class="chamber-title">🏛️ Senate (Weighted Votes)</div>
                     <div style="font-size: 14px; color: #666;">
-                        ⚠️ Senate votes are individual - each senator = 1 vote
+                        ⚖️ Weighted by role: Leader 25%, Whip 20%, Caucus Chairs 15%/10%/5%, Senators share remaining 25%
                     </div>
                 </div>
                 
@@ -600,6 +600,17 @@
                             <option value="democrat">Democrat</option>
                         </select>
                     </div>
+                    <div class="control-group">
+                        <label for="senatorRole">Role</label>
+                        <select id="senatorRole">
+                            <option value="senator">Senator</option>
+                            <option value="party_leader">Party Leader</option>
+                            <option value="party_whip">Party Whip</option>
+                            <option value="caucus_chair">Caucus Chair</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="control-row" style="margin-bottom: 20px;">
                     <div class="control-group">
                         <label for="senatorFaction">Faction</label>
                         <select id="senatorFaction">
@@ -638,7 +649,9 @@
             <div class="chamber-section">
                 <div class="chamber-header">
                     <div class="chamber-title">🏢 House (Faction Votes)</div>
-                    <div style="font-size: 14px; color: #666;">Vote by faction, scaled to party composition</div>
+                    <div style="font-size: 14px; color: #666;">
+                        ⚠️ House votes by faction - each faction vote = all faction members
+                    </div>
                 </div>
 
                 <div class="parties-grid">
@@ -946,6 +959,14 @@
                         }
                     };
                     updatePartySeatsDisplay();
+                } else {
+                    // Set defaults if no party data exists
+                    partySeats = {
+                        republican: { senate: 49, house: 232 },
+                        democrat: { senate: 50, house: 203 }
+                    };
+                    updatePartySeatsDisplay();
+                    savePartySeats(); // Save defaults to database
                 }
                 
                 const sessionName = document.getElementById('sessionSelect').selectedOptions[0].textContent;
@@ -1086,11 +1107,21 @@
         async function addSenator() {
             const name = document.getElementById('senatorName').value.trim();
             const party = document.getElementById('senatorParty').value;
+            const role = document.getElementById('senatorRole').value;
             const factionId = document.getElementById('senatorFaction').value;
 
             if (!name || !currentSessionId) {
                 alert('Please enter a senator name and select a session');
                 return;
+            }
+
+            // Validate role restrictions
+            if (role === 'party_leader' || role === 'party_whip') {
+                const existingRoles = senators[party].filter(s => s.role === role);
+                if (existingRoles.length > 0) {
+                    alert(`There can only be one ${role.replace('_', ' ')} per party. Current ${role.replace('_', ' ')}: ${existingRoles[0].name}`);
+                    return;
+                }
             }
 
             try {
@@ -1100,6 +1131,7 @@
                         session_id: currentSessionId,
                         name: name,
                         party: party,
+                        role: role,
                         faction_id: factionId || null
                     }])
                     .select();
@@ -1118,7 +1150,62 @@
             }
         }
 
-        // ===== VOTING =====
+        // ===== VOTE WEIGHT CALCULATIONS =====
+        function calculateSenatorVoteWeight(senator, party) {
+            const partySeats = partySeats[party].senate;
+            const partyFactions = factions[party].filter(f => f.senate_count > 0);
+            
+            // Sort factions by size for caucus chair hierarchy
+            const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
+            
+            switch(senator.role) {
+                case 'party_leader':
+                    return partySeats * 0.25; // 25%
+                case 'party_whip':
+                    return partySeats * 0.20; // 20%
+                case 'caucus_chair':
+                    // Determine caucus chair weight based on faction size ranking
+                    const senatorFaction = factions[party].find(f => f.id === senator.faction_id);
+                    if (!senatorFaction) return 0;
+                    
+                    const factionRank = sortedFactions.findIndex(f => f.id === senatorFaction.id);
+                    if (factionRank === 0) return partySeats * 0.15; // Largest caucus: 15%
+                    if (factionRank === 1) return partySeats * 0.10; // Middle caucus: 10%
+                    if (factionRank === 2) return partySeats * 0.05; // Smallest caucus: 5%
+                    return 0; // No weight if more than 3 factions
+                case 'senator':
+                default:
+                    // Regular senators share remaining 25% of votes
+                    const remainingPercentage = 0.25;
+                    const regularSenators = senators[party].filter(s => s.role === 'senator');
+                    const senatorFaction = factions[party].find(f => f.id === senator.faction_id);
+                    
+                    if (!senatorFaction) {
+                        // If no faction, share equally among all regular senators in party
+                        return (partySeats * remainingPercentage) / regularSenators.length;
+                    } else {
+                        // Share within faction first, then party
+                        const factionRegularSenators = regularSenators.filter(s => s.faction_id === senator.faction_id);
+                        const factionWeight = senatorFaction.senate_count / partySeats;
+                        return (partySeats * remainingPercentage * factionWeight) / factionRegularSenators.length;
+                    }
+            }
+        }
+
+        function getSenatorDisplayWeight(senator, party) {
+            const weight = calculateSenatorVoteWeight(senator, party);
+            return Math.round(weight * 100) / 100; // Round to 2 decimal places
+        }
+
+        function getRoleDisplayName(role) {
+            switch(role) {
+                case 'party_leader': return 'Party Leader';
+                case 'party_whip': return 'Party Whip';
+                case 'caucus_chair': return 'Caucus Chair';
+                case 'senator':
+                default: return 'Senator';
+            }
+        }
         async function vote(id, voteType, isSenator = false) {
             if (!currentSessionId) {
                 alert('No session selected');
@@ -1171,23 +1258,33 @@
             ['republican', 'democrat'].forEach(party => {
                 const container = document.getElementById(party === 'republican' ? 'republicanSenators' : 'democratSenators');
                 
-                container.innerHTML = senators[party].map(senator => {
+                // Sort senators by role hierarchy for display
+                const sortedSenators = [...senators[party]].sort((a, b) => {
+                    const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'senator': 3 };
+                    return roleOrder[a.role] - roleOrder[b.role];
+                });
+                
+                container.innerHTML = sortedSenators.map(senator => {
                     const faction = factions[party].find(f => f.id === senator.faction_id);
                     const factionName = faction ? faction.name : 'No Faction';
+                    const roleDisplay = getRoleDisplayName(senator.role);
+                    const voteWeight = getSenatorDisplayWeight(senator, party);
                     
                     return `
                         <div class="faction-item">
                             <div class="faction-info">
                                 <div class="faction-name">${senator.name}</div>
-                                <div class="faction-count">Faction: ${factionName}</div>
+                                <div class="faction-count">
+                                    ${roleDisplay} | ${factionName} | Weight: ${voteWeight} votes
+                                </div>
                             </div>
                             <div class="vote-buttons">
                                 <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
-                                        onclick="console.log('Senate vote: ${senator.name}'); vote(${senator.id}, 'aye', true)">AYE</button>
+                                        onclick="console.log('Senate vote: ${senator.name} (${voteWeight} votes)'); vote(${senator.id}, 'aye', true)">AYE</button>
                                 <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
-                                        onclick="console.log('Senate vote: ${senator.name}'); vote(${senator.id}, 'nay', true)">NAY</button>
+                                        onclick="console.log('Senate vote: ${senator.name} (${voteWeight} votes)'); vote(${senator.id}, 'nay', true)">NAY</button>
                                 <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
-                                        onclick="console.log('Senate vote: ${senator.name}'); vote(${senator.id}, 'pres', true)">PRES</button>
+                                        onclick="console.log('Senate vote: ${senator.name} (${voteWeight} votes)'); vote(${senator.id}, 'pres', true)">PRES</button>
                             </div>
                             <button class="delete-btn" onclick="removeSenator('${party}', ${senator.id})">×</button>
                         </div>
@@ -1256,12 +1353,13 @@
                 democrat: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } }
             };
 
-            // Calculate Senate results ONLY from individual senators (never from factions)
+            // Calculate Senate results using WEIGHTED votes from senators
             ['republican', 'democrat'].forEach(party => {
                 senators[party].forEach(senator => {
                     const vote = votes[senator.id];
                     if (vote) {
-                        results[party].senate[vote]++;
+                        const weight = calculateSenatorVoteWeight(senator, party);
+                        results[party].senate[vote] += weight;
                     }
                 });
             });
@@ -1273,6 +1371,13 @@
                     if (vote && faction.house_count > 0) {
                         results[party].house[vote] += faction.house_count;
                     }
+                });
+            });
+
+            // Round Senate results to nearest whole number for display
+            ['republican', 'democrat'].forEach(party => {
+                ['aye', 'nay', 'pres'].forEach(voteType => {
+                    results[party].senate[voteType] = Math.round(results[party].senate[voteType]);
                 });
             });
 
