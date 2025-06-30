@@ -812,48 +812,6 @@
       text-align: center;
       box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
     }
-
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-    }
-
-    .modal-content {
-      background-color: white;
-      margin: 5% auto;
-      padding: 25px;
-      border-radius: 15px;
-      width: 90%;
-      max-width: 600px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    }
-
-    .modal-header {
-      font-size: 1.3em;
-      font-weight: 700;
-      margin-bottom: 20px;
-      color: #333;
-      border-bottom: 2px solid #e9ecef;
-      padding-bottom: 10px;
-    }
-
-    .close {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .close:hover {
-      color: #000;
-    }
   </style>
 </head>
 
@@ -1007,9 +965,31 @@
             <label>&nbsp;</label>
             <button onclick="addSenator()">Add Senator</button>
           </div>
+        </div>
+        
+        <div class="control-row" style="margin-bottom: 20px; border-top: 2px solid #e9ecef; padding-top: 15px;">
+          <div class="control-group">
+            <label for="bulkSenators">Bulk Add Senators (one per line)</label>
+            <textarea id="bulkSenators" placeholder="John Smith (R-TX)&#10;Jane Doe (D-CA)&#10;..." style="height: 100px; resize: vertical;"></textarea>
+          </div>
+          <div class="control-group">
+            <label for="bulkParty">Default Party</label>
+            <select id="bulkParty">
+              <option value="republican">Republican</option>
+              <option value="democrat">Democrat</option>
+            </select>
+          </div>
+        </div>
+        <div class="control-row">
+          <div class="control-group">
+            <label for="bulkFaction">Default Faction</label>
+            <select id="bulkFaction">
+              <option value="">No faction</option>
+            </select>
+          </div>
           <div class="control-group">
             <label>&nbsp;</label>
-            <button onclick="showBulkAddSenators()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">Bulk Add</button>
+            <button onclick="addBulkSenators()">Add All Senators</button>
           </div>
         </div>
 
@@ -1168,120 +1148,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Edit Senator Modal -->
-  <div id="editSenatorModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <span class="close" onclick="closeModal('editSenatorModal')">&times;</span>
-        Edit Senator
-      </div>
-      <div class="control-row">
-        <div class="control-group">
-          <label for="editSenatorName">Name</label>
-          <input type="text" id="editSenatorName">
-        </div>
-        <div class="control-group">
-          <label for="editSenatorParty">Party</label>
-          <select id="editSenatorParty">
-            <option value="republican">Republican</option>
-            <option value="democrat">Democrat</option>
-          </select>
-        </div>
-      </div>
-      <div class="control-row">
-        <div class="control-group">
-          <label for="editSenatorRole">Roles</label>
-          <select id="editSenatorRole" multiple style="height: 80px;">
-            <option value="senator">Senator</option>
-            <option value="party_leader">Party Leader</option>
-            <option value="party_whip">Party Whip</option>
-            <option value="caucus_chair">Caucus Chair</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label for="editSenatorFaction">Faction</label>
-          <select id="editSenatorFaction">
-            <option value="">Select faction...</option>
-          </select>
-        </div>
-      </div>
-      <div class="control-row">
-        <button onclick="saveSenatorEdit()">Save Changes</button>
-        <button onclick="closeModal('editSenatorModal')" style="background: #6c757d;">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Edit Faction Modal -->
-  <div id="editFactionModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <span class="close" onclick="closeModal('editFactionModal')">&times;</span>
-        Edit Faction
-      </div>
-      <div class="control-row">
-        <div class="control-group">
-          <label for="editFactionName">Name</label>
-          <input type="text" id="editFactionName">
-        </div>
-        <div class="control-group">
-          <label for="editFactionParty">Party</label>
-          <select id="editFactionParty">
-            <option value="republican">Republican</option>
-            <option value="democrat">Democrat</option>
-          </select>
-        </div>
-      </div>
-      <div class="control-row">
-        <div class="control-group">
-          <label for="editFactionSenateCount">Senate Members</label>
-          <input type="number" id="editFactionSenateCount" min="0" max="100">
-        </div>
-        <div class="control-group">
-          <label for="editFactionHouseCount">House Members</label>
-          <input type="number" id="editFactionHouseCount" min="0" max="435">
-        </div>
-      </div>
-      <div class="control-row">
-        <button onclick="saveFactionEdit()">Save Changes</button>
-        <button onclick="closeModal('editFactionModal')" style="background: #6c757d;">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bulk Add Senators Modal -->
-  <div id="bulkAddModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <span class="close" onclick="closeModal('bulkAddModal')">&times;</span>
-        Bulk Add Senators
-      </div>
-      <div style="margin-bottom: 15px;">
-        <label for="bulkSenatorList" style="font-weight: 600;">Senator Names (one per line)</label>
-        <textarea id="bulkSenatorList" style="width: 100%; height: 150px; padding: 10px; border: 2px solid #e1e5e9; border-radius: 8px;" placeholder="Enter senator names, one per line:&#10;John Smith (R-TX)&#10;Jane Doe (D-CA)&#10;etc..."></textarea>
-      </div>
-      <div class="control-row">
-        <div class="control-group">
-          <label for="bulkParty">Default Party</label>
-          <select id="bulkParty">
-            <option value="republican">Republican</option>
-            <option value="democrat">Democrat</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label for="bulkFaction">Default Faction</label>
-          <select id="bulkFaction">
-            <option value="">No faction</option>
-          </select>
-        </div>
-      </div>
-      <div class="control-row">
-        <button onclick="processBulkAdd()">Add All Senators</button>
-        <button onclick="closeModal('bulkAddModal')" style="background: #6c757d;">Cancel</button>
       </div>
     </div>
   </div>
@@ -1933,7 +1799,7 @@
                       <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
                               onclick="vote('${senator.id}', 'pres', true)">PRES</button>
                     </div>
-                    <button class="delete-btn" onclick="editSenator('${party}', '${senator.id}')" style="background: #17a2b8; margin-right: 5px;">✏️</button>
+                    <button class="delete-btn" onclick="editSenator('${party}', '${senator.id}')" style="background: #007bff; margin-right: 5px;">✏</button>
                     <button class="delete-btn" onclick="removeSenator('${party}', '${senator.id}')">×</button>
                   </div>
                 `;
@@ -1980,7 +1846,7 @@
                       <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
                               onclick="vote('${senator.id}', 'pres', true)">PRES</button>
                     </div>
-                    <button class="delete-btn" onclick="editSenator('${party}', '${senator.id}')" style="background: #17a2b8; margin-right: 5px;">✏️</button>
+                    <button class="delete-btn" onclick="editSenator('${party}', '${senator.id}')" style="background: #007bff; margin-right: 5px;">✏</button>
                     <button class="delete-btn" onclick="removeSenator('${party}', '${senator.id}')">×</button>
                   </div>
                 `;
@@ -2013,7 +1879,7 @@
                 <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
                         onclick="vote('${faction.id}', 'pres', false)">PRES</button>
               </div>
-              <button class="delete-btn" onclick="editFaction('${party}', '${faction.id}')" style="background: #17a2b8; margin-right: 5px;">✏️</button>
+              <button class="delete-btn" onclick="editFaction('${party}', '${faction.id}')" style="background: #007bff; margin-right: 5px;">✏</button>
               <button class="delete-btn" onclick="removeFaction('${party}', '${faction.id}')">×</button>
             </div>
           `;
@@ -2358,14 +2224,22 @@
 
     function updateFactionSelectors() {
       const senatorFactionSelect = document.getElementById('senatorFaction');
+      const bulkFactionSelect = document.getElementById('bulkFaction');
+      
       senatorFactionSelect.innerHTML = '<option value="">Select faction...</option>';
+      bulkFactionSelect.innerHTML = '<option value="">No faction</option>';
       
       ['republican', 'democrat'].forEach(party => {
         factions[party].forEach(faction => {
-          const option = document.createElement('option');
-          option.value = faction.id;
-          option.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
-          senatorFactionSelect.appendChild(option);
+          const option1 = document.createElement('option');
+          option1.value = faction.id;
+          option1.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
+          senatorFactionSelect.appendChild(option1);
+          
+          const option2 = document.createElement('option');
+          option2.value = faction.id;
+          option2.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
+          bulkFactionSelect.appendChild(option2);
         });
       });
     }
@@ -2416,6 +2290,85 @@
       }
       
       clearWeightCache();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function editSenator(party, id) {
+      const senator = senators[party].find(s => s.id == id);
+      if (!senator) return;
+
+      const newName = prompt('Edit senator name:', senator.name);
+      if (!newName || newName.trim() === '') return;
+
+      senator.name = newName.trim();
+      clearWeightCache();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function addBulkSenators() {
+      const bulkText = document.getElementById('bulkSenators').value.trim();
+      const defaultParty = document.getElementById('bulkParty').value;
+      const defaultFaction = document.getElementById('bulkFaction').value;
+
+      if (!bulkText) {
+        alert('Please enter senator names');
+        return;
+      }
+
+      const lines = bulkText.split('\n').filter(line => line.trim());
+      let addedCount = 0;
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        const newSenator = {
+          id: Date.now() + addedCount,
+          name: trimmed,
+          party: defaultParty,
+          roles: ['senator'],
+          faction_id: defaultFaction || null
+        };
+
+        senators[defaultParty].push(newSenator);
+        addedCount++;
+      });
+
+      document.getElementById('bulkSenators').value = '';
+      
+      clearWeightCache();
+      renderAll();
+      updateResults();
+      autoSave();
+      
+      alert(`Added ${addedCount} senators`);
+    }
+
+    function editFaction(party, id) {
+      const faction = factions[party].find(f => f.id === id);
+      if (!faction) return;
+
+      const newName = prompt('Edit faction name:', faction.name);
+      if (newName && newName.trim() !== '') {
+        faction.name = newName.trim();
+      }
+
+      const newSenateCount = prompt('Edit senate seats:', faction.senate_count);
+      if (newSenateCount !== null && !isNaN(newSenateCount)) {
+        faction.senate_count = parseInt(newSenateCount) || 0;
+      }
+
+      const newHouseCount = prompt('Edit house seats:', faction.house_count);
+      if (newHouseCount !== null && !isNaN(newHouseCount)) {
+        faction.house_count = parseInt(newHouseCount) || 0;
+      }
+
+      clearWeightCache();
+      updateFactionSelectors();
       renderAll();
       updateResults();
       autoSave();
@@ -2592,226 +2545,6 @@
     // ===== ONLINE/OFFLINE EVENTS =====
     window.addEventListener('online',  ()=>{ isOnline=true;  console.log('📶 Back online'); updateSyncStatus('local'); });
     window.addEventListener('offline', ()=>{ isOnline=false; console.log('📴 Offline');      updateSyncStatus('offline'); });
-
-    // ===== EDITING FUNCTIONALITY =====
-    let currentEditingSenator = null;
-    let currentEditingFaction = null;
-
-    function editSenator(party, senatorId) {
-      const senator = senators[party].find(s => s.id == senatorId);
-      if (!senator) return;
-      
-      currentEditingSenator = { party, id: senatorId };
-      
-      document.getElementById('editSenatorName').value = senator.name;
-      document.getElementById('editSenatorParty').value = senator.party;
-      document.getElementById('editSenatorFaction').value = senator.faction_id || '';
-      
-      // Populate faction options
-      const factionSelect = document.getElementById('editSenatorFaction');
-      factionSelect.innerHTML = '<option value="">Select faction...</option>';
-      ['republican', 'democrat'].forEach(p => {
-        factions[p].forEach(faction => {
-          const option = document.createElement('option');
-          option.value = faction.id;
-          option.textContent = `${faction.name} (${p.charAt(0).toUpperCase() + p.slice(1)})`;
-          factionSelect.appendChild(option);
-        });
-      });
-      document.getElementById('editSenatorFaction').value = senator.faction_id || '';
-      
-      // Set roles
-      const roleSelect = document.getElementById('editSenatorRole');
-      const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
-      Array.from(roleSelect.options).forEach(option => {
-        option.selected = roles.includes(option.value);
-      });
-      
-      document.getElementById('editSenatorModal').style.display = 'block';
-    }
-
-    function saveSenatorEdit() {
-      if (!currentEditingSenator) return;
-      
-      const { party, id } = currentEditingSenator;
-      const senator = senators[party].find(s => s.id == id);
-      if (!senator) return;
-      
-      const newName = document.getElementById('editSenatorName').value.trim();
-      const newParty = document.getElementById('editSenatorParty').value;
-      const newFactionId = document.getElementById('editSenatorFaction').value;
-      const roleSelect = document.getElementById('editSenatorRole');
-      const selectedRoles = Array.from(roleSelect.selectedOptions).map(option => option.value);
-      
-      if (!newName) {
-        alert('Senator name is required');
-        return;
-      }
-      
-      // Check for exclusive roles
-      const exclusiveRoles = ['party_leader', 'party_whip'];
-      for (const role of exclusiveRoles) {
-        if (selectedRoles.includes(role)) {
-          const existingRoles = senators[newParty].filter(s => s.id != id && {
-            const roles = Array.isArray(s.roles) ? s.roles : (s.role ? [s.role] : []);
-            return roles.includes(role);
-          });
-          if (existingRoles.length > 0) {
-            alert(`There can only be one ${role.replace('_', ' ')} per party.`);
-            return;
-          }
-        }
-      }
-      
-      // If party changed, move senator
-      if (newParty !== party) {
-        senators[party] = senators[party].filter(s => s.id != id);
-        senator.party = newParty;
-        senators[newParty].push(senator);
-      }
-      
-      senator.name = newName;
-      senator.faction_id = newFactionId || null;
-      senator.roles = selectedRoles.length > 0 ? selectedRoles : ['senator'];
-      
-      clearWeightCache();
-      renderAll();
-      updateResults();
-      autoSave();
-      closeModal('editSenatorModal');
-    }
-
-    function editFaction(party, factionId) {
-      const faction = factions[party].find(f => f.id === factionId);
-      if (!faction) return;
-      
-      currentEditingFaction = { party, id: factionId };
-      
-      document.getElementById('editFactionName').value = faction.name;
-      document.getElementById('editFactionParty').value = faction.party;
-      document.getElementById('editFactionSenateCount').value = faction.senate_count;
-      document.getElementById('editFactionHouseCount').value = faction.house_count;
-      
-      document.getElementById('editFactionModal').style.display = 'block';
-    }
-
-    function saveFactionEdit() {
-      if (!currentEditingFaction) return;
-      
-      const { party, id } = currentEditingFaction;
-      const faction = factions[party].find(f => f.id === id);
-      if (!faction) return;
-      
-      const newName = document.getElementById('editFactionName').value.trim();
-      const newParty = document.getElementById('editFactionParty').value;
-      const newSenateCount = parseInt(document.getElementById('editFactionSenateCount').value) || 0;
-      const newHouseCount = parseInt(document.getElementById('editFactionHouseCount').value) || 0;
-      
-      if (!newName) {
-        alert('Faction name is required');
-        return;
-      }
-      
-      // If party changed, move faction
-      if (newParty !== party) {
-        factions[party] = factions[party].filter(f => f.id !== id);
-        faction.party = newParty;
-        factions[newParty].push(faction);
-      }
-      
-      faction.name = newName;
-      faction.senate_count = newSenateCount;
-      faction.house_count = newHouseCount;
-      
-      clearWeightCache();
-      updateFactionSelectors();
-      renderAll();
-      updateResults();
-      autoSave();
-      closeModal('editFactionModal');
-    }
-
-    function showBulkAddSenators() {
-      // Populate faction options
-      const factionSelect = document.getElementById('bulkFaction');
-      factionSelect.innerHTML = '<option value="">No faction</option>';
-      ['republican', 'democrat'].forEach(party => {
-        factions[party].forEach(faction => {
-          const option = document.createElement('option');
-          option.value = faction.id;
-          option.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
-          factionSelect.appendChild(option);
-        });
-      });
-      
-      document.getElementById('bulkAddModal').style.display = 'block';
-    }
-
-    function processBulkAdd() {
-      const senatorText = document.getElementById('bulkSenatorList').value.trim();
-      const defaultParty = document.getElementById('bulkParty').value;
-      const defaultFaction = document.getElementById('bulkFaction').value;
-      
-      if (!senatorText) {
-        alert('Please enter senator names');
-        return;
-      }
-      
-      const lines = senatorText.split('\n').filter(line => line.trim());
-      let addedCount = 0;
-      
-      lines.forEach(line => {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) return;
-        
-        // Try to parse party from format "Name (R-State)" or "Name (D-State)"
-        let name = trimmedLine;
-        let party = defaultParty;
-        
-        const partyMatch = trimmedLine.match(/^(.+?)\s*\(([RD])-/);
-        if (partyMatch) {
-          name = partyMatch[1].trim();
-          party = partyMatch[2] === 'R' ? 'republican' : 'democrat';
-        }
-        
-        const newSenator = {
-          id: Date.now() + addedCount,
-          name: name,
-          party: party,
-          roles: ['senator'],
-          faction_id: defaultFaction || null
-        };
-        
-        senators[party].push(newSenator);
-        addedCount++;
-      });
-      
-      clearWeightCache();
-      renderAll();
-      updateResults();
-      autoSave();
-      
-      alert(`Added ${addedCount} senators successfully!`);
-      closeModal('bulkAddModal');
-      document.getElementById('bulkSenatorList').value = '';
-    }
-
-    function closeModal(modalId) {
-      document.getElementById(modalId).style.display = 'none';
-      currentEditingSenator = null;
-      currentEditingFaction = null;
-    }
-
-    // Close modals when clicking outside
-    window.onclick = function(event) {
-      const modals = ['editSenatorModal', 'editFactionModal', 'bulkAddModal'];
-      modals.forEach(modalId => {
-        const modal = document.getElementById(modalId);
-        if (event.target === modal) {
-          closeModal(modalId);
-        }
-      });
-    }
 
     // ===== AUTO-SAVE =====
     setInterval(()=>{
