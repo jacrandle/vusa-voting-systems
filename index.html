@@ -4,6 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Congressional Voting System</title>
+    
+    <script>
+        // ===== GOOGLE SHEETS CONFIGURATION =====
+        const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
+        const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew';
+        
+        // 1) Called by the <script>?onload=… attribute
+        function onGapiLoad() {
+            console.log("✅ api.js loaded, now loading client library…");
+            // This is guaranteed to exist once api.js finishes
+            gapi.load('client', onClientLoad, onClientError);
+        }
+        
+        // 2) When the 'client' module is ready
+        function onClientLoad() {
+            console.log("✅ gapi.client module is ready, initializing…");
+            gapi.client.init({
+                apiKey: GOOGLE_API_KEY,
+                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+            })
+            .then(() => {
+                console.log("✅ Google Sheets API initialized");
+                startMyApp(); // your post-init entrypoint
+            })
+            .catch(err => {
+                console.error("❌ gapi.client.init failed:", err);
+                startMyAppOffline(); // fallback to local mode
+            });
+        }
+        
+        // 3) If gapi.load itself errors
+        function onClientError(err) {
+            console.error("❌ Failed to load gapi.client module:", err);
+            startMyAppOffline(); // fallback to local mode
+        }
+    </script>
+    
+    <script async defer src="https://apis.google.com/js/api.js?onload=onGapiLoad"></script>
     <style>
         * {
             margin: 0;
@@ -791,48 +829,9 @@
             </div>
         </div>
     </div>
-<script>
-  // 1) Define the callback the loader will invoke:
-  function onGapiLoad() {
-    console.log('✅ Google API loaded and ready');
-    // Now actually load the client library:
-    gapi.load('client', onClientLoad, onClientError);
-  }
-
-  // 2) Called once the "client" module is available:
-  function onClientLoad() {
-    console.log('✅ gapi.client module loaded');
-    gapi.client.init({
-      apiKey: GOOGLE_API_KEY,
-      discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-    })
-    .then(() => {
-      console.log('✅ Google Sheets API initialized');
-      initializeGoogleSheets();  // rename your existing post-init logic here
-    })
-    .catch(err => {
-      console.error('❌ Google Sheets init failed:', err);
-    });
-  }
-
-  // 3) If the client module fails:
-  function onClientError(err) {
-    console.error('❌ Google API client load error:', err);
-    // your fallback to localStorage here…
-  }
-</script>
-
-<!-- 4) Load the single Google API script just once -->
-<script async defer
-        src="https://apis.google.com/js/api.js?onload=onGapiLoad">
-</script>
 
     <script>
-        // ===== GOOGLE SHEETS CONFIGURATION =====
-        // Your Google API Key
-        const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk'; // Your API key
-        const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew'; // Your spreadsheet
-        
+        // ===== GOOGLE SHEETS STARTUP FUNCTIONS =====
         // Sheet names and ranges
         const SHEETS_CONFIG = {
             sessions: { name: 'Sessions', range: 'A:C' },
@@ -842,6 +841,82 @@
             votes: { name: 'Votes', range: 'A:D' }
         };
 
+        async function startMyApp() {
+            console.log('🚀 Starting with Google Sheets connection...');
+            syncEnabled = true;
+            updateSyncStatus('syncing');
+            
+            const detailsEl = document.getElementById('connectionDetails');
+            if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection...';
+            
+            try {
+                // Test connection by reading spreadsheet metadata
+                const response = await gapi.client.sheets.spreadsheets.get({
+                    spreadsheetId: SPREADSHEET_ID
+                });
+                
+                if (!response.result) {
+                    throw new Error('Cannot access spreadsheet - check permissions');
+                }
+                
+                console.log('✅ Google Sheets connected successfully');
+                console.log('📊 Spreadsheet:', response.result.properties.title);
+                
+                // Initialize sheets if they don't exist
+                await initializeSheetStructure();
+                await loadAvailableSessions();
+                updateSyncStatus('synced');
+                
+                // Load current session
+                if (currentSessionId) {
+                    await loadSessionFromSheets(currentSessionId);
+                }
+                
+                updateSessionSelector();
+                
+                console.log('✅ Google Sheets mode ready!');
+                
+            } catch (error) {
+                console.error('❌ Google Sheets access error:', error);
+                
+                if (error.status === 403) {
+                    if (detailsEl) detailsEl.textContent = 'Permission denied - make sure the spreadsheet is shared with "Anyone with the link can edit"';
+                } else if (error.status === 404) {
+                    if (detailsEl) detailsEl.textContent = 'Spreadsheet not found - check the SPREADSHEET_ID';
+                } else if (error.message.includes('API key')) {
+                    if (detailsEl) detailsEl.textContent = 'API key invalid - make sure Google Sheets API is enabled in Google Cloud Console';
+                } else {
+                    if (detailsEl) detailsEl.textContent = 'Google Sheets error: ' + error.message;
+                }
+                
+                // Fall back to offline mode
+                startMyAppOffline();
+            }
+        }
+        
+        async function startMyAppOffline() {
+            console.log('📁 Starting in offline mode...');
+            syncEnabled = false;
+            updateSyncStatus('offline');
+            
+            const detailsEl = document.getElementById('connectionDetails');
+            if (detailsEl) detailsEl.textContent = 'Using enhanced local storage with file backup';
+            
+            // Load local sessions
+            availableSessions = await loadLocalSessions();
+            if (availableSessions.length === 0) {
+                availableSessions = [{ id: 'local', name: 'Local Session' }];
+                currentSessionId = 'local';
+            } else {
+                currentSessionId = availableSessions[0].id;
+            }
+            
+            await loadLocalData();
+            updateSessionSelector();
+            
+            console.log('✅ Offline mode ready!');
+        }
+        
         // Global variables
         let currentSessionId = null;
         let availableSessions = [];
@@ -854,190 +929,53 @@
         };
         let isOnline = navigator.onLine;
         let syncEnabled = false;
-        let gapi;
 
-        // ===== GOOGLE API LOADING FUNCTIONS =====
-        function loadGoogleAPI() {
-            return new Promise((resolve, reject) => {
-                // Check if gapi is already loaded
-                if (window.gapi && window.gapi.load) {
-                    console.log('✅ Google API already loaded');
-                    resolve(true);
-                    return;
+        // ===== INITIALIZATION =====
+        async function initializeApp() {
+            console.log('🚀 App starting - waiting for Google API...');
+            
+            // Set initial status
+            document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load...';
+            updateSyncStatus('offline');
+            
+            // The Google API will call startMyApp() or startMyAppOffline() when ready
+            // This function is now just for fallback timing in case Google API never loads
+            setTimeout(() => {
+                if (!syncEnabled && !window.gapi) {
+                    console.log('⏰ Google API timeout - starting offline mode');
+                    startMyAppOffline();
                 }
-                
-                // Define the callback function before loading the script
-                window.onGapiLoad = function() {
-                    console.log('✅ Google API loaded and ready');
-                    // Clean up the global callback
-                    delete window.onGapiLoad;
-                    resolve(true);
-                };
-                
-                // Create script with official onload parameter
-                const script = document.createElement('script');
-                script.src = 'https://apis.google.com/js/api.js?onload=onGapiLoad';
-                script.async = true;
-                script.defer = true;
-                
-                script.onerror = () => {
-                    console.log('❌ Failed to load Google API');
-                    delete window.onGapiLoad;
-                    reject(new Error('Failed to load Google API from googleapis.com'));
-                };
-                
-                // Add timeout protection
-                const timeout = setTimeout(() => {
-                    console.log('⏰ Google API load timeout');
-                    delete window.onGapiLoad;
-                    reject(new Error('Google API load timeout'));
-                }, 15000);
-                
-                // Clear timeout when callback fires
-                const originalCallback = window.onGapiLoad;
-                window.onGapiLoad = function() {
-                    clearTimeout(timeout);
-                    originalCallback();
-                };
-                
-                console.log('🔄 Loading Google API...');
-                document.head.appendChild(script);
-            });
+            }, 20000); // 20 second fallback timeout
         }
 
-        // ===== GOOGLE SHEETS API INITIALIZATION =====
-        async function initializeGoogleSheets() {
-            try {
-                const detailsEl = document.getElementById('connectionDetails');
-                
-                if (detailsEl) detailsEl.textContent = 'Loading Google API from multiple CDNs...';
-                
-                // Try to load Google API from multiple CDNs
-                const loaded = await loadGoogleAPI();
-                
-                if (!loaded || !window.gapi || !window.gapi.load) {
-                    throw new Error('All Google API CDN sources failed to load. This is likely a network/firewall issue blocking Google APIs.');
-                }
-                
-                if (detailsEl) detailsEl.textContent = 'Initializing Google Sheets API...';
-                
-                // Initialize the API with better error handling
-                try {
-                    await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                            reject(new Error('Google API initialization timeout'));
-                        }, 10000);
-                        
-                        window.gapi.load('client', {
-                            callback: () => {
-                                clearTimeout(timeout);
-                                console.log('✅ Google API client loaded');
-                                resolve();
-                            },
-                            onerror: (error) => {
-                                clearTimeout(timeout);
-                                console.error('❌ Google API client load error:', error);
-                                reject(new Error('Failed to load Google API client'));
-                            }
-                        });
-                    });
-                } catch (error) {
-                    console.error('❌ Google API load error:', error);
-                    throw new Error('Failed to initialize Google API client: ' + error.message);
-                }
-                
-                // Wait a moment for the client to be ready
-                await new Promise(r => setTimeout(r, 500));
-                
-                try {
-                    await window.gapi.client.init({
-                        apiKey: GOOGLE_API_KEY,
-                        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                    });
-                    console.log('✅ Google Sheets API initialized');
-                } catch (error) {
-                    console.error('❌ Google Sheets API init error:', error);
-                    throw new Error('Failed to initialize Google Sheets API: ' + error.message);
-                }
-                
-                if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection...';
-                
-                // Test connection by reading spreadsheet metadata
-                try {
-                    const response = await window.gapi.client.sheets.spreadsheets.get({
-                        spreadsheetId: SPREADSHEET_ID
-                    });
-                    
-                    if (!response.result) {
-                        throw new Error('Cannot access spreadsheet - check permissions');
-                    }
-                    
-                    console.log('✅ Google Sheets connected successfully');
-                    console.log('📊 Spreadsheet:', response.result.properties.title);
-                } catch (error) {
-                    console.error('❌ Google Sheets access error:', error);
-                    
-                    if (error.status === 403) {
-                        throw new Error('Permission denied - make sure the spreadsheet is shared with "Anyone with the link can edit"');
-                    } else if (error.status === 404) {
-                        throw new Error('Spreadsheet not found - check the SPREADSHEET_ID');
-                    } else if (error.message.includes('API key')) {
-                        throw new Error('API key invalid - make sure Google Sheets API is enabled in Google Cloud Console');
-                    } else {
-                        throw new Error('Cannot access spreadsheet: ' + error.message);
-                    }
-                }
-                
-                syncEnabled = true;
-                
-                // Initialize sheets if they don't exist
-                await initializeSheetStructure();
-                await loadAvailableSessions();
-                updateSyncStatus('synced');
-                
-            } catch (error) {
-                console.error('❌ Google Sheets connection failed:', error);
-                
-                const detailsEl = document.getElementById('connectionDetails');
-                if (error.message.includes('All Google API CDN sources failed')) {
-                    if (detailsEl) detailsEl.textContent = 'Google API blocked - network/firewall issue, using local storage';
-                    console.log('🔒 Network/firewall is blocking Google APIs');
-                    console.log('📋 This could be:');
-                    console.log('📋 - Corporate firewall blocking googleapis.com');
-                    console.log('📋 - Ad blocker blocking Google scripts');
-                    console.log('📋 - Network restrictions');
-                } else if (error.message.includes('Permission denied')) {
-                    if (detailsEl) detailsEl.textContent = 'Permission denied - check spreadsheet sharing settings';
-                    console.log('📋 Spreadsheet permission issue - make sure it\'s shared with "Anyone with the link can edit"');
-                } else if (error.message.includes('API key')) {
-                    if (detailsEl) detailsEl.textContent = 'API key invalid - check Google Cloud Console';
-                    console.log('📋 API key issue - make sure Google Sheets API is enabled');
-                } else if (error.message.includes('timeout') || error.message.includes('client')) {
-                    if (detailsEl) detailsEl.textContent = 'Google API initialization failed - using local storage';
-                    console.log('📋 Google API initialization issue - possible network or timing problem');
-                } else {
-                    if (detailsEl) detailsEl.textContent = `Google Sheets error: ${error.message}`;
-                }
-                
-                console.log('📁 Using enhanced local storage with file backup');
-                syncEnabled = false;
-                updateSyncStatus('offline');
-                
-                // Fall back to local mode
-                availableSessions = await loadLocalSessions();
-                if (availableSessions.length === 0) {
-                    availableSessions = [{ id: 'local', name: 'Local Session' }];
-                    currentSessionId = 'local';
-                } else {
-                    currentSessionId = availableSessions[0].id;
-                }
-                await loadLocalData();
+        // ===== EVENT LISTENERS =====
+        window.addEventListener('online', () => {
+            isOnline = true;
+            console.log('📶 Back online');
+            updateSyncStatus('local');
+        });
+
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            console.log('📴 Gone offline');
+            updateSyncStatus('offline');
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        // Auto-save every 60 seconds for Google Sheets (longer to respect rate limits)
+        setInterval(() => {
+            if (syncEnabled) {
+                autoSave();
+            } else {
+                saveToLocalStorage();
             }
-        }
+        }, 60000);
 
         async function initializeSheetStructure() {
             try {
-                const spreadsheet = await window.gapi.client.sheets.spreadsheets.get({
+                const spreadsheet = await gapi.client.sheets.spreadsheets.get({
                     spreadsheetId: SPREADSHEET_ID
                 });
                 
@@ -1059,7 +997,7 @@
                 });
                 
                 if (requests.length > 0) {
-                    await window.gapi.client.sheets.spreadsheets.batchUpdate({
+                    await gapi.client.sheets.spreadsheets.batchUpdate({
                         spreadsheetId: SPREADSHEET_ID,
                         resource: { requests }
                     });
@@ -1086,14 +1024,14 @@
             for (const [sheetName, headerRow] of Object.entries(headers)) {
                 try {
                     // Check if sheet has headers
-                    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+                    const response = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: SPREADSHEET_ID,
                         range: `${sheetName}!A1:Z1`
                     });
                     
                     if (!response.result.values || response.result.values.length === 0) {
                         // Add headers
-                        await window.gapi.client.sheets.spreadsheets.values.update({
+                        await gapi.client.sheets.spreadsheets.values.update({
                             spreadsheetId: SPREADSHEET_ID,
                             range: `${sheetName}!A1`,
                             valueInputOption: 'USER_ENTERED',
@@ -1112,7 +1050,7 @@
         // ===== GOOGLE SHEETS CRUD OPERATIONS =====
         async function readSheet(sheetName) {
             try {
-                const response = await window.gapi.client.sheets.spreadsheets.values.get({
+                const response = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: SPREADSHEET_ID,
                     range: `${sheetName}!${SHEETS_CONFIG[sheetName].range}`
                 });
@@ -1145,14 +1083,14 @@
                 const values = data.map(obj => headers.map(header => obj[header] || ''));
                 
                 // Clear existing data (keep headers)
-                await window.gapi.client.sheets.spreadsheets.values.clear({
+                await gapi.client.sheets.spreadsheets.values.clear({
                     spreadsheetId: SPREADSHEET_ID,
                     range: `${sheetName}!A2:Z`
                 });
                 
                 // Write new data
                 if (values.length > 0) {
-                    await window.gapi.client.sheets.spreadsheets.values.update({
+                    await gapi.client.sheets.spreadsheets.values.update({
                         spreadsheetId: SPREADSHEET_ID,
                         range: `${sheetName}!A2`,
                         valueInputOption: 'USER_ENTERED',
@@ -1174,7 +1112,7 @@
                 const headers = Object.keys(data);
                 const values = [headers.map(header => data[header] || '')];
                 
-                await window.gapi.client.sheets.spreadsheets.values.append({
+                await gapi.client.sheets.spreadsheets.values.append({
                     spreadsheetId: SPREADSHEET_ID,
                     range: `${sheetName}!A:A`,
                     valueInputOption: 'USER_ENTERED',
@@ -2379,31 +2317,20 @@
 
         // ===== INITIALIZATION =====
         async function initializeApp() {
-            console.log('🚀 Starting Congressional Voting System with Google Sheets...');
+            console.log('🚀 App starting - waiting for Google API...');
             
             // Set initial status
-            document.getElementById('connectionDetails').textContent = 'Initializing Google Sheets integration...';
+            document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load...';
             updateSyncStatus('offline');
             
-            // Wait a moment for external scripts to load
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            // Initialize Google Sheets connection
-            await initializeGoogleSheets();
-            
-            // Load current session
-            if (currentSessionId) {
-                if (syncEnabled) {
-                    await loadSessionFromSheets(currentSessionId);
-                } else {
-                    await loadLocalData();
+            // The Google API will call startMyApp() or startMyAppOffline() when ready
+            // This function is now just for fallback timing in case Google API never loads
+            setTimeout(() => {
+                if (!syncEnabled && !window.gapi) {
+                    console.log('⏰ Google API timeout - starting offline mode');
+                    startMyAppOffline();
                 }
-            }
-            
-            updateSessionSelector();
-            
-            console.log('✅ App ready! Congressional voting system with Google Sheets loaded');
-            console.log(`📊 Mode: ${syncEnabled ? 'Google Sheets Connected' : 'Local Storage with File Backup'}`);
+            }, 20000); // 20 second fallback timeout
         }
 
         // ===== EVENT LISTENERS =====
@@ -2420,7 +2347,7 @@
         });
 
         // Initialize when page loads
-        initializeApp();
+        document.addEventListener('DOMContentLoaded', initializeApp);
 
         // Auto-save every 60 seconds for Google Sheets (longer to respect rate limits)
         setInterval(() => {
@@ -2430,6 +2357,9 @@
                 saveToLocalStorage();
             }
         }, 60000);
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
