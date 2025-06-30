@@ -791,6 +791,41 @@
             </div>
         </div>
     </div>
+<script>
+  // 1) Define the callback the loader will invoke:
+  function onGapiLoad() {
+    console.log('✅ Google API loaded and ready');
+    // Now actually load the client library:
+    gapi.load('client', onClientLoad, onClientError);
+  }
+
+  // 2) Called once the "client" module is available:
+  function onClientLoad() {
+    console.log('✅ gapi.client module loaded');
+    gapi.client.init({
+      apiKey: GOOGLE_API_KEY,
+      discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+    })
+    .then(() => {
+      console.log('✅ Google Sheets API initialized');
+      initializeGoogleSheets();  // rename your existing post-init logic here
+    })
+    .catch(err => {
+      console.error('❌ Google Sheets init failed:', err);
+    });
+  }
+
+  // 3) If the client module fails:
+  function onClientError(err) {
+    console.error('❌ Google API client load error:', err);
+    // your fallback to localStorage here…
+  }
+</script>
+
+<!-- 4) Load the single Google API script just once -->
+<script async defer
+        src="https://apis.google.com/js/api.js?onload=onGapiLoad">
+</script>
 
     <script>
         // ===== GOOGLE SHEETS CONFIGURATION =====
