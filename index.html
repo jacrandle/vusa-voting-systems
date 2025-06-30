@@ -9,35 +9,41 @@
   <script>
     // ===== GOOGLE SHEETS CONFIGURATION =====
     const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
+    const OAUTH2_CLIENT_ID = 'YOUR_OAUTH2_CLIENT_ID.apps.googleusercontent.com'; // Replace with your OAuth2 Client ID from Google Cloud Console
     const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew';
 
-    // Called by <script defer src="…?onload=onGapiLoad">
     function onGapiLoad() {
-      console.log('✅ api.js loaded, now loading client library…');
-      gapi.load('client', onClientLoad, onClientError);
+      console.log('✅ api.js loaded, now loading client and auth2...');
+      // load both the Sheets client *and* the auth2 library
+      gapi.load('client:auth2', onClientLoad, onClientError);
     }
 
-    // Once gapi.client is available
     function onClientLoad() {
-      console.log('✅ gapi.client module is ready, initializing…');
+      console.log('✅ gapi.client and auth2 modules ready, initializing...');
       gapi.client
         .init({
           apiKey: GOOGLE_API_KEY,
-          discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+          clientId: OAUTH2_CLIENT_ID,
+          discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+          scope: 'https://www.googleapis.com/auth/spreadsheets'
         })
         .then(() => {
-          console.log('✅ Google Sheets API initialized');
-          startMyApp();
+          console.log('✅ gapi.client initialized, signing in...');
+          // make the user sign in and grant the scope
+          return gapi.auth2.getAuthInstance().signIn();
+        })
+        .then(() => {
+          console.log('✅ Signed in and ready to call Sheets');
+          startMyApp(); // your sheet-powered code
         })
         .catch(err => {
-          console.error('❌ gapi.client.init failed:', err);
-          startMyAppOffline();
+          console.error('❌ gapi.client.init / signIn failed:', err);
+          startMyAppOffline(); // fallback
         });
     }
 
-    // If gapi.load('client') itself errors
     function onClientError(err) {
-      console.error("❌ Failed to load gapi.client module:", err);
+      console.error("❌ Failed to load gapi.client/auth2:", err);
       startMyAppOffline();
     }
 
@@ -50,7 +56,7 @@
       if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection…';
 
       try {
-        // Test metadata
+        // Test metadata - now uses OAuth2 token automatically
         const resp = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
         if (!resp.result) throw new Error('Cannot access spreadsheet.');
         console.log('✅ Google Sheets connected:', resp.result.properties.title);
@@ -623,9 +629,9 @@
            target="_blank" style="color:#fff;text-decoration:underline">
           Your Google Sheet
         </a><br/>
-        ✅ <strong>API Key Configured:</strong> Ready to connect<br/>
-        🔄 <strong>Next Step:</strong> Share sheet as "Anyone with link can edit"<br/>
-        🚀 <strong>Ready to test!</strong>
+        ⚠️ <strong>Replace:</strong> OAUTH2_CLIENT_ID with your Google Cloud Console Client ID<br/>
+        🔄 <strong>Auth Flow:</strong> Will prompt for Google sign-in on page load<br/>
+        🚀 <strong>Ready to test!</strong> Serve via http://localhost (not file://)
       </div>
     </div>
 
@@ -1990,7 +1996,8 @@
       console.log('🚀 App starting – waiting for Google API…');
       document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load…';
       updateSyncStatus('offline');
-      // fallback if Google never loads
+      
+      // fallback if Google API never loads
       setTimeout(()=>{
         if (!syncEnabled && !window.gapi) {
           console.log('⏰ Google API timeout – starting offline mode');
@@ -2006,7 +2013,7 @@
     // ===== AUTO-SAVE =====
     setInterval(()=>{
       if (syncEnabled) autoSave();
-      else           saveToLocalStorage();
+      else saveToLocalStorage();
     }, 60000);
   </script>
 </body>
