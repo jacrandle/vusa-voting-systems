@@ -920,6 +920,22 @@
           </div>
         </div>
         <button onclick="addFaction()">Add Faction</button>
+        
+        <div class="control-row" style="margin-top: 20px; border-top: 2px solid #e9ecef; padding-top: 15px;">
+          <div class="control-group">
+            <label for="bulkFactions">Bulk Add Factions (one per line)</label>
+            <textarea id="bulkFactions" placeholder="Progressive Caucus,20,98&#10;Freedom Caucus,8,45&#10;..." style="height: 80px; resize: vertical;"></textarea>
+            <small style="color: #666;">Format: Name,Senate,House (e.g., "Freedom Caucus,8,45")</small>
+          </div>
+          <div class="control-group">
+            <label for="bulkFactionParty">Default Party</label>
+            <select id="bulkFactionParty">
+              <option value="republican">Republican</option>
+              <option value="democrat">Democrat</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="addBulkFactions()">Add All Factions</button>
       </div>
     </div>
 
@@ -2465,30 +2481,130 @@
       alert(`Added ${addedCount} senators`);
     }
 
-    function editFaction(party, id) {
-      const faction = factions[party].find(f => f.id === id);
-      if (!faction) return;
+    function addBulkFactions() {
+      const bulkText = document.getElementById('bulkFactions').value.trim();
+      const defaultParty = document.getElementById('bulkFactionParty').value;
 
-      const newName = prompt('Edit faction name:', faction.name);
-      if (newName && newName.trim() !== '') {
-        faction.name = newName.trim();
+      if (!bulkText) {
+        alert('Please enter faction data');
+        return;
       }
 
-      const newSenateCount = prompt('Edit senate seats:', faction.senate_count);
-      if (newSenateCount !== null && !isNaN(newSenateCount)) {
-        faction.senate_count = parseInt(newSenateCount) || 0;
-      }
+      const lines = bulkText.split('\n').filter(line => line.trim());
+      let addedCount = 0;
 
-      const newHouseCount = prompt('Edit house seats:', faction.house_count);
-      if (newHouseCount !== null && !isNaN(newHouseCount)) {
-        faction.house_count = parseInt(newHouseCount) || 0;
-      }
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
 
+        const parts = trimmed.split(',').map(p => p.trim());
+        if (parts.length < 1) return;
+
+        const name = parts[0];
+        const senateCount = parts.length > 1 ? parseInt(parts[1]) || 0 : 0;
+        const houseCount = parts.length > 2 ? parseInt(parts[2]) || 0 : 0;
+
+        const newFaction = {
+          id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}_${addedCount}`,
+          name: name,
+          party: defaultParty,
+          senate_count: senateCount,
+          house_count: houseCount
+        };
+
+        factions[defaultParty].push(newFaction);
+        addedCount++;
+      });
+
+      document.getElementById('bulkFactions').value = '';
+      
       clearWeightCache();
       updateFactionSelectors();
       renderAll();
       updateResults();
       autoSave();
+      
+      alert(`Added ${addedCount} factions`);
+    }
+
+    function editFaction(party, id) {
+      const faction = factions[party].find(f => f.id === id);
+      if (!faction) return;
+
+      // Create edit form
+      const editForm = `
+        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 400px;">
+          <h3 style="margin-bottom: 15px;">Edit Faction</h3>
+          
+          <label>Faction Name:</label>
+          <input type="text" id="editFactionName" value="${faction.name}" style="width: 100%; margin-bottom: 10px;">
+          
+          <label>Party:</label>
+          <select id="editFactionParty" style="width: 100%; margin-bottom: 10px;">
+            <option value="republican" ${faction.party === 'republican' ? 'selected' : ''}>Republican</option>
+            <option value="democrat" ${faction.party === 'democrat' ? 'selected' : ''}>Democrat</option>
+          </select>
+          
+          <label>Senate Seats:</label>
+          <input type="number" id="editFactionSenate" value="${faction.senate_count}" min="0" max="100" style="width: 100%; margin-bottom: 10px;">
+          
+          <label>House Seats:</label>
+          <input type="number" id="editFactionHouse" value="${faction.house_count}" min="0" max="435" style="width: 100%; margin-bottom: 15px;">
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="cancelFactionEdit()" style="background: #6c757d;">Cancel</button>
+            <button onclick="saveFactionEdit('${party}', '${id}')" style="background: #28a745;">Save</button>
+          </div>
+        </div>
+        <div id="editFactionOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999;" onclick="cancelFactionEdit()"></div>
+      `;
+
+      document.body.insertAdjacentHTML('beforeend', editForm);
+    }
+
+    function saveFactionEdit(party, id) {
+      const faction = factions[party].find(f => f.id === id);
+      if (!faction) return;
+
+      const newName = document.getElementById('editFactionName').value.trim();
+      const newParty = document.getElementById('editFactionParty').value;
+      const newSenateCount = parseInt(document.getElementById('editFactionSenate').value) || 0;
+      const newHouseCount = parseInt(document.getElementById('editFactionHouse').value) || 0;
+
+      if (!newName) {
+        alert('Please enter a faction name');
+        return;
+      }
+
+      // Remove from old party if changed
+      if (newParty !== party) {
+        factions[party] = factions[party].filter(f => f.id !== faction.id);
+      }
+
+      // Update faction
+      faction.name = newName;
+      faction.party = newParty;
+      faction.senate_count = newSenateCount;
+      faction.house_count = newHouseCount;
+
+      // Add to new party if changed
+      if (newParty !== party) {
+        factions[newParty].push(faction);
+      }
+
+      cancelFactionEdit();
+      clearWeightCache();
+      updateFactionSelectors();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function cancelFactionEdit() {
+      const editForm = document.querySelector('div[style*="position: fixed"]');
+      const overlay = document.getElementById('editFactionOverlay');
+      if (editForm) editForm.remove();
+      if (overlay) overlay.remove();
     }
 
     function removeSenator(party, id) {
