@@ -1,2365 +1,2013 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Congressional Voting System</title>
-    
-    <script>
-        // ===== GOOGLE SHEETS CONFIGURATION =====
-        const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
-        const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew';
-        
-        // 1) Called by the <script>?onload=… attribute
-        function onGapiLoad() {
-            console.log("✅ api.js loaded, now loading client library…");
-            // This is guaranteed to exist once api.js finishes
-            gapi.load('client', onClientLoad, onClientError);
-        }
-        
-        // 2) When the 'client' module is ready
-        function onClientLoad() {
-            console.log("✅ gapi.client module is ready, initializing…");
-            gapi.client.init({
-                apiKey: GOOGLE_API_KEY,
-                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-            })
-            .then(() => {
-                console.log("✅ Google Sheets API initialized");
-                startMyApp(); // your post-init entrypoint
-            })
-            .catch(err => {
-                console.error("❌ gapi.client.init failed:", err);
-                startMyAppOffline(); // fallback to local mode
-            });
-        }
-        
-        // 3) If gapi.load itself errors
-        function onClientError(err) {
-            console.error("❌ Failed to load gapi.client module:", err);
-            startMyAppOffline(); // fallback to local mode
-        }
-    </script>
-    
-    <script async defer src="https://apis.google.com/js/api.js?onload=onGapiLoad"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .sync-info {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .sync-selector {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .session-selector {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .session-selector select {
-            padding: 8px 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 6px;
-            background: white;
-        }
-
-        .session-selector button {
-            padding: 8px 12px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .status-indicator {
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .status-local {
-            background: #e1f5fe;
-            color: #01579b;
-        }
-
-        .status-syncing {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        .status-synced {
-            background: #e8f5e8;
-            color: #2e7d32;
-        }
-
-        .status-offline {
-            background: #fce4ec;
-            color: #ad1457;
-        }
-
-        .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .control-section {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-
-        .section-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            margin-bottom: 15px;
-            color: #333;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 10px;
-        }
-
-        .control-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .control-group {
-            flex: 1;
-            min-width: 150px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #555;
-            font-size: 14px;
-        }
-
-        input, select, button {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        input[type="number"] {
-            text-align: center;
-        }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .chambers-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .chamber-section {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-
-        .chamber-header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid #667eea;
-        }
-
-        .chamber-title {
-            font-size: 1.6em;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .parties-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .party-section {
-            border: 2px solid;
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .republican-section {
-            border-color: #dc3545;
-            background: rgba(220, 53, 69, 0.05);
-        }
-
-        .democrat-section {
-            border-color: #007bff;
-            background: rgba(0, 123, 255, 0.05);
-        }
-
-        .party-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .party-title {
-            font-size: 1.2em;
-            font-weight: 700;
-        }
-
-        .republican-section .party-title {
-            color: #dc3545;
-        }
-
-        .democrat-section .party-title {
-            color: #007bff;
-        }
-
-        .faction-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin-bottom: 8px;
-            background: rgba(255,255,255,0.8);
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .faction-item:hover {
-            transform: translateX(3px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .faction-info {
-            flex: 1;
-            margin-right: 10px;
-        }
-
-        .faction-name {
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-
-        .faction-count {
-            font-size: 12px;
-            color: #666;
-        }
-
-        .vote-buttons {
-            display: flex;
-            gap: 6px;
-        }
-
-        .vote-btn {
-            width: 40px;
-            height: 30px;
-            font-size: 11px;
-            font-weight: 600;
-            border: 2px solid;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 0;
-        }
-
-        .vote-btn.aye {
-            background: #28a745;
-            color: white;
-            border-color: #28a745;
-        }
-
-        .vote-btn.nay {
-            background: #dc3545;
-            color: white;
-            border-color: #dc3545;
-        }
-
-        .vote-btn.pres {
-            background: #ffc107;
-            color: #212529;
-            border-color: #ffc107;
-        }
-
-        .vote-btn:not(.active) {
-            background: white;
-            color: #666;
-        }
-
-        .vote-btn.aye:not(.active) {
-            border-color: #28a745;
-            color: #28a745;
-        }
-
-        .vote-btn.nay:not(.active) {
-            border-color: #dc3545;
-            color: #dc3545;
-        }
-
-        .vote-btn.pres:not(.active) {
-            border-color: #ffc107;
-            color: #f39c12;
-        }
-
-        .vote-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .results-section {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-
-        .chamber-results {
-            text-align: center;
-        }
-
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-        }
-
-        .results-table th,
-        .results-table td {
-            padding: 12px;
-            text-align: center;
-            border: 1px solid #dee2e6;
-        }
-
-        .results-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-        }
-
-        .rep-row {
-            background: rgba(220, 53, 69, 0.1);
-        }
-
-        .dem-row {
-            background: rgba(0, 123, 255, 0.1);
-        }
-
-        .total-row {
-            background: #e9ecef;
-            font-weight: 600;
-        }
-
-        .delete-btn {
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            background: #dc3545;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            margin-left: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .delete-btn:hover {
-            background: #c82333;
-            transform: scale(1.1);
-        }
-
-        .add-faction {
-            background: rgba(40, 167, 69, 0.1);
-            border: 2px dashed #28a745;
-            color: #28a745;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.3s ease;
-            font-size: 13px;
-        }
-
-        .add-faction:hover {
-            background: rgba(40, 167, 69, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .seat-display {
-            background: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        @media (max-width: 1200px) {
-            .chambers-section {
-                grid-template-columns: 1fr;
-            }
-            
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .controls-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .parties-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .control-row {
-                flex-direction: column;
-            }
-            
-            .control-group {
-                min-width: 100%;
-            }
-
-            .sync-info {
-                flex-direction: column;
-                text-align: center;
-            }
-        }
-
-        .export-btn {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
-        .clear-btn {
-            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
-        }
-
-        .sync-btn {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Advanced Congressional Voting System</title>
+
+  <!-- 1) Define your Google keys & startup callbacks BEFORE loading api.js -->
+  <script>
+    // ===== GOOGLE SHEETS CONFIGURATION =====
+    const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
+    const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew';
+
+    // Called by <script defer src="…?onload=onGapiLoad">
+    function onGapiLoad() {
+      console.log('✅ api.js loaded, now loading client library…');
+      gapi.load('client', onClientLoad, onClientError);
+    }
+
+    // Once gapi.client is available
+    function onClientLoad() {
+      console.log('✅ gapi.client module is ready, initializing…');
+      gapi.client
+        .init({
+          apiKey: GOOGLE_API_KEY,
+          discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+        })
+        .then(() => {
+          console.log('✅ Google Sheets API initialized');
+          startMyApp();
+        })
+        .catch(err => {
+          console.error('❌ gapi.client.init failed:', err);
+          startMyAppOffline();
+        });
+    }
+
+    // If gapi.load('client') itself errors
+    function onClientError(err) {
+      console.error("❌ Failed to load gapi.client module:", err);
+      startMyAppOffline();
+    }
+
+    // ============ Your two entrypoints ==============
+    async function startMyApp() {
+      console.log('🚀 Starting with Google Sheets connection…');
+      syncEnabled = true;
+      updateSyncStatus('syncing');
+      const detailsEl = document.getElementById('connectionDetails');
+      if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection…';
+
+      try {
+        // Test metadata
+        const resp = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+        if (!resp.result) throw new Error('Cannot access spreadsheet.');
+        console.log('✅ Google Sheets connected:', resp.result.properties.title);
+
+        await initializeSheetStructure();
+        await loadAvailableSessions();
+        updateSyncStatus('synced');
+        if (currentSessionId) await loadSessionFromSheets(currentSessionId);
+        updateSessionSelector();
+        console.log('✅ Google Sheets mode ready!');
+      }
+      catch (err) {
+        console.error('❌ Google Sheets access error:', err);
+        const detailsEl = document.getElementById('connectionDetails');
+        if (detailsEl) {
+          if (err.status === 403) detailsEl.textContent = 'Permission denied – check share settings.';
+          else if (err.status === 404) detailsEl.textContent = 'Spreadsheet not found – check ID.';
+          else if (err.message.includes('API key')) detailsEl.textContent = 'Invalid API key.';
+          else detailsEl.textContent = 'Google Sheets error: ' + err.message;
+        }
+        startMyAppOffline();
+      }
+    }
+
+    async function startMyAppOffline() {
+      console.log('📁 Starting in offline mode…');
+      syncEnabled = false;
+      updateSyncStatus('offline');
+      const detailsEl = document.getElementById('connectionDetails');
+      if (detailsEl) detailsEl.textContent = 'Using enhanced local storage with file backup';
+
+      availableSessions = await loadLocalSessions();
+      if (availableSessions.length === 0) {
+        availableSessions = [{ id: 'local', name: 'Local Session' }];
+        currentSessionId = 'local';
+      } else {
+        currentSessionId = availableSessions[0].id;
+      }
+      await loadLocalData();
+      updateSessionSelector();
+      console.log('✅ Offline mode ready!');
+    }
+
+    // Global state
+    let currentSessionId = null;
+    let availableSessions = [];
+    let factions = { republican: [], democrat: [] };
+    let senators = { republican: [], democrat: [] };
+    let votes = {};
+    let partySeats = {
+      republican: { senate: 49, house: 232 },
+      democrat:   { senate: 50, house: 203 }
+    };
+    let syncEnabled = false;
+    let isOnline = navigator.onLine;
+  </script>
+
+  <!-- 2) Load the Google API exactly once, with defer -->
+  <script defer src="https://apis.google.com/js/api.js?onload=onGapiLoad"></script>
+
+  <!-- 3) Your CSS -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .sync-info {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .sync-selector {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .session-selector {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .session-selector select {
+      padding: 8px 12px;
+      border: 2px solid #e1e5e9;
+      border-radius: 6px;
+      background: white;
+    }
+
+    .session-selector button {
+      padding: 8px 12px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .status-indicator {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status-local {
+      background: #e1f5fe;
+      color: #01579b;
+    }
+
+    .status-syncing {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .status-synced {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .status-offline {
+      background: #fce4ec;
+      color: #ad1457;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .control-section {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .section-title {
+      font-size: 1.3em;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: #333;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 10px;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .control-group {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #555;
+      font-size: 14px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e1e5e9;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    input[type="number"] {
+      text-align: center;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .chambers-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .chamber-section {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .chamber-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 3px solid #667eea;
+    }
+
+    .chamber-title {
+      font-size: 1.6em;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .parties-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .party-section {
+      border: 2px solid;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .republican-section {
+      border-color: #dc3545;
+      background: rgba(220, 53, 69, 0.05);
+    }
+
+    .democrat-section {
+      border-color: #007bff;
+      background: rgba(0, 123, 255, 0.05);
+    }
+
+    .party-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .party-title {
+      font-size: 1.2em;
+      font-weight: 700;
+    }
+
+    .republican-section .party-title {
+      color: #dc3545;
+    }
+
+    .democrat-section .party-title {
+      color: #007bff;
+    }
+
+    .faction-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .faction-item:hover {
+      transform: translateX(3px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .faction-info {
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    .faction-name {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .faction-count {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .vote-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .vote-btn {
+      width: 40px;
+      height: 30px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 2px solid;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      padding: 0;
+    }
+
+    .vote-btn.aye {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+    }
+
+    .vote-btn.nay {
+      background: #dc3545;
+      color: white;
+      border-color: #dc3545;
+    }
+
+    .vote-btn.pres {
+      background: #ffc107;
+      color: #212529;
+      border-color: #ffc107;
+    }
+
+    .vote-btn:not(.active) {
+      background: white;
+      color: #666;
+    }
+
+    .vote-btn.aye:not(.active) {
+      border-color: #28a745;
+      color: #28a745;
+    }
+
+    .vote-btn.nay:not(.active) {
+      border-color: #dc3545;
+      color: #dc3545;
+    }
+
+    .vote-btn.pres:not(.active) {
+      border-color: #ffc107;
+      color: #f39c12;
+    }
+
+    .vote-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .results-section {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    .chamber-results {
+      text-align: center;
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+
+    .results-table th,
+    .results-table td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #dee2e6;
+    }
+
+    .results-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .rep-row {
+      background: rgba(220, 53, 69, 0.1);
+    }
+
+    .dem-row {
+      background: rgba(0, 123, 255, 0.1);
+    }
+
+    .total-row {
+      background: #e9ecef;
+      font-weight: 600;
+    }
+
+    .delete-btn {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #dc3545;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .delete-btn:hover {
+      background: #c82333;
+      transform: scale(1.1);
+    }
+
+    .add-faction {
+      background: rgba(40, 167, 69, 0.1);
+      border: 2px dashed #28a745;
+      color: #28a745;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.3s ease;
+      font-size: 13px;
+    }
+
+    .add-faction:hover {
+      background: rgba(40, 167, 69, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .seat-display {
+      background: #f8f9fa;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 1200px) {
+      .chambers-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .parties-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .control-row {
+        flex-direction: column;
+      }
+      
+      .control-group {
+        min-width: 100%;
+      }
+
+      .sync-info {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .export-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+
+    .clear-btn {
+      background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    }
+
+    .sync-btn {
+      background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏛️ Advanced Congressional Voting System</h1>
-            <p>Now powered by Google Sheets - Real-time collaboration!</p>
-            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-top: 10px; font-size: 0.9em; line-height: 1.4;">
-                <strong>📋 Current Status:</strong><br>
-                ✅ <strong>Spreadsheet Connected:</strong> <a href="https://docs.google.com/spreadsheets/d/1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew/edit" target="_blank" style="color: #fff; text-decoration: underline;">Your Google Sheet</a><br>
-                ✅ <strong>API Key Configured:</strong> Ready to connect to Google Sheets<br>
-                🔄 <strong>Next Step:</strong> Make sure your spreadsheet is shared with "Anyone with the link can edit"<br>
-                🚀 <strong>Ready to test!</strong> The system should now connect to Google Sheets automatically
-            </div>
-        </div>
-
-        <div class="sync-info">
-            <div class="sync-selector">
-                <div class="session-selector">
-                    <strong>Session:</strong>
-                    <select id="sessionSelect" onchange="switchSession()">
-                        <option value="default">Default Session</option>
-                        <option value="scenario-1">Scenario 1</option>
-                        <option value="scenario-2">Scenario 2</option>
-                        <option value="custom">Custom Session</option>
-                    </select>
-                    <button onclick="createNewSession()">New</button>
-                    <button onclick="importAllData()" title="Import from file">📁↑</button>
-                    <button onclick="exportAllData()" title="Export to file">📁↓</button>
-                </div>
-                    <div>
-                        <strong>Status:</strong> <span id="connectionDetails">Initializing...</span>
-                    </div>
-            </div>
-            <div style="display: flex; gap: 15px; align-items: center;">
-                <button onclick="syncWithDatabase()" class="sync-btn" style="width: 120px;" id="syncBtn">
-                    Sync Now
-                </button>
-                <div id="syncStatus" class="status-indicator status-local">
-                    📱 Local Mode
-                </div>
-            </div>
-        </div>
-
-        <div class="controls-grid">
-            <div class="control-section">
-                <div class="section-title">📊 Party Seat Configuration</div>
-                <div class="control-row">
-                    <div class="control-group">
-                        <label>Republican Senate Seats</label>
-                        <input type="number" id="repSenateSeats" value="49" min="0" max="100" onchange="updatePartySeats()">
-                    </div>
-                    <div class="control-group">
-                        <label>Republican House Seats</label>
-                        <input type="number" id="repHouseSeats" value="232" min="0" max="435" onchange="updatePartySeats()">
-                    </div>
-                </div>
-                <div class="control-row">
-                    <div class="control-group">
-                        <label>Democrat Senate Seats</label>
-                        <input type="number" id="demSenateSeats" value="50" min="0" max="100" onchange="updatePartySeats()">
-                    </div>
-                    <div class="control-group">
-                        <label>Democrat House Seats</label>
-                        <input type="number" id="demHouseSeats" value="203" min="0" max="435" onchange="updatePartySeats()">
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <div class="section-title">👥 Add New Faction</div>
-                <div class="control-row">
-                    <div class="control-group">
-                        <label for="factionName">Faction Name</label>
-                        <input type="text" id="factionName" placeholder="e.g., Progressive Caucus">
-                    </div>
-                    <div class="control-group">
-                        <label for="factionParty">Party</label>
-                        <select id="factionParty">
-                            <option value="republican">Republican</option>
-                            <option value="democrat">Democrat</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <div class="control-group">
-                        <label for="factionSenateCount">Senate Members</label>
-                        <input type="number" id="factionSenateCount" value="0" min="0" max="100">
-                    </div>
-                    <div class="control-group">
-                        <label for="factionHouseCount">House Members</label>
-                        <input type="number" id="factionHouseCount" value="0" min="0" max="435">
-                    </div>
-                </div>
-                <button onclick="addFaction()">Add Faction</button>
-            </div>
-        </div>
-
-        <div class="chambers-section">
-            <div class="chamber-section">
-                <div class="chamber-header">
-                    <div class="chamber-title">🏛️ Senate (Weighted Votes)</div>
-                    <div style="font-size: 14px; color: #666;">
-                        ⚖️ Constrained weighted voting: Base faction weight + leadership bonus, scaled to never exceed party seat total
-                    </div>
-                </div>
-                
-                <div class="control-row" style="margin-bottom: 20px;">
-                    <div class="control-group">
-                        <label for="senatorName">Senator Name</label>
-                        <input type="text" id="senatorName" placeholder="Enter senator name">
-                    </div>
-                    <div class="control-group">
-                        <label for="senatorParty">Party</label>
-                        <select id="senatorParty">
-                            <option value="republican">Republican</option>
-                            <option value="democrat">Democrat</option>
-                        </select>
-                    </div>
-                    <div class="control-group">
-                        <label for="senatorRole">Role</label>
-                        <select id="senatorRole">
-                            <option value="senator">Senator</option>
-                            <option value="party_leader">Party Leader</option>
-                            <option value="party_whip">Party Whip</option>
-                            <option value="caucus_chair">Caucus Chair</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="control-row" style="margin-bottom: 20px;">
-                    <div class="control-group">
-                        <label for="senatorFaction">Faction</label>
-                        <select id="senatorFaction">
-                            <option value="">Select faction...</option>
-                        </select>
-                    </div>
-                    <div class="control-group">
-                        <label>&nbsp;</label>
-                        <button onclick="addSenator()">Add Senator</button>
-                    </div>
-                </div>
-
-                <div class="parties-grid">
-                    <div class="party-section republican-section">
-                        <div class="party-header">
-                            <span class="party-title">🔴 Republicans</span>
-                        </div>
-                        <div class="seat-display">
-                            Senators: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
-                            <br><small>Total Weight: <span id="repSenateWeight">0</span></small>
-                        </div>
-                        <div id="republicanSenators"></div>
-                    </div>
-
-                    <div class="party-section democrat-section">
-                        <div class="party-header">
-                            <span class="party-title">🔵 Democrats</span>
-                        </div>
-                        <div class="seat-display">
-                            Senators: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
-                            <br><small>Total Weight: <span id="demSenateWeight">0</span></small>
-                        </div>
-                        <div id="democratSenators"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="chamber-section">
-                <div class="chamber-header">
-                    <div class="chamber-title">🏢 House (Faction Votes)</div>
-                    <div style="font-size: 14px; color: #666;">
-                        ⚠️ House votes by faction - each faction vote = all faction members
-                    </div>
-                </div>
-
-                <div class="parties-grid">
-                    <div class="party-section republican-section">
-                        <div class="party-header">
-                            <span class="party-title">🔴 Republicans</span>
-                        </div>
-                        <div class="seat-display">
-                            Seats: <span id="repHouseCurrent">0</span> / <span id="repHouseTotal">232</span>
-                        </div>
-                        <div id="republicanHouseFactions"></div>
-                        <div class="add-faction" onclick="showAddFaction('republican')">
-                            + Add Republican Faction
-                        </div>
-                    </div>
-
-                    <div class="party-section democrat-section">
-                        <div class="party-header">
-                            <span class="party-title">🔵 Democrats</span>
-                        </div>
-                        <div class="seat-display">
-                            Seats: <span id="demHouseCurrent">0</span> / <span id="demHouseTotal">203</span>
-                        </div>
-                        <div id="democratHouseFactions"></div>
-                        <div class="add-faction" onclick="showAddFaction('democrat')">
-                            + Add Democrat Faction
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="control-section">
-            <div class="control-row">
-                <div class="control-group">
-                    <button onclick="exportResults()" class="export-btn">Export Results</button>
-                </div>
-                <div class="control-group">
-                    <button onclick="clearAllVotes()" class="clear-btn">Clear All Votes</button>
-                </div>
-                <div class="control-group">
-                    <button onclick="resetToDefaults()" class="sync-btn">Reset to Defaults</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="results-section">
-            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">📈 Voting Results</h2>
-            <div class="results-grid">
-                <div class="chamber-results">
-                    <h3 class="chamber-title">🏛️ Senate Results</h3>
-                    <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th>Party</th>
-                                <th>AYE</th>
-                                <th>NAY</th>
-                                <th>PRESENT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="rep-row">
-                                <td>Republican</td>
-                                <td id="repSenateAye">0</td>
-                                <td id="repSenateNay">0</td>
-                                <td id="repSenatePres">0</td>
-                            </tr>
-                            <tr class="dem-row">
-                                <td>Democrat</td>
-                                <td id="demSenateAye">0</td>
-                                <td id="demSenateNay">0</td>
-                                <td id="demSenatePres">0</td>
-                            </tr>
-                            <tr class="total-row">
-                                <td><strong>TOTAL</strong></td>
-                                <td id="totalSenateAye">0</td>
-                                <td id="totalSenateNay">0</td>
-                                <td id="totalSenatePres">0</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="chamber-results">
-                    <h3 class="chamber-title">🏢 House Results</h3>
-                    <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th>Party</th>
-                                <th>AYE</th>
-                                <th>NAY</th>
-                                <th>PRESENT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="rep-row">
-                                <td>Republican</td>
-                                <td id="repHouseAye">0</td>
-                                <td id="repHouseNay">0</td>
-                                <td id="repHousePres">0</td>
-                            </tr>
-                            <tr class="dem-row">
-                                <td>Democrat</td>
-                                <td id="demHouseAye">0</td>
-                                <td id="demHouseNay">0</td>
-                                <td id="demHousePres">0</td>
-                            </tr>
-                            <tr class="total-row">
-                                <td><strong>TOTAL</strong></td>
-                                <td id="totalHouseAye">0</td>
-                                <td id="totalHouseNay">0</td>
-                                <td id="totalHousePres">0</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+  <!-- ==== Your HTML markup ==== -->
+  <div class="container">
+    <div class="header">
+      <h1>🏛️ Advanced Congressional Voting System</h1>
+      <p>Now powered by Google Sheets – Real-time collaboration!</p>
+      <div style="background:rgba(255,255,255,.2);padding:15px;border-radius:8px;margin-top:10px;font-size:.9em;line-height:1.4">
+        <strong>📋 Current Status:</strong><br/>
+        ✅ <strong>Spreadsheet Connected:</strong>
+        <a href="https://docs.google.com/spreadsheets/d/1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew/edit"
+           target="_blank" style="color:#fff;text-decoration:underline">
+          Your Google Sheet
+        </a><br/>
+        ✅ <strong>API Key Configured:</strong> Ready to connect<br/>
+        🔄 <strong>Next Step:</strong> Share sheet as "Anyone with link can edit"<br/>
+        🚀 <strong>Ready to test!</strong>
+      </div>
     </div>
 
-    <script>
-        // ===== GOOGLE SHEETS STARTUP FUNCTIONS =====
-        // Sheet names and ranges
-        const SHEETS_CONFIG = {
-            sessions: { name: 'Sessions', range: 'A:C' },
-            partySeats: { name: 'PartySeats', range: 'A:D' },
-            factions: { name: 'Factions', range: 'A:F' },
-            senators: { name: 'Senators', range: 'A:G' },
-            votes: { name: 'Votes', range: 'A:D' }
-        };
+    <div class="sync-info">
+      <div class="sync-selector">
+        <div class="session-selector">
+          <strong>Session:</strong>
+          <select id="sessionSelect" onchange="switchSession()">
+            <option value="default">Default Session</option>
+            <option value="scenario-1">Scenario 1</option>
+            <option value="scenario-2">Scenario 2</option>
+            <option value="custom">Custom Session</option>
+          </select>
+          <button onclick="createNewSession()">New</button>
+          <button onclick="importAllData()" title="Import from file">📁↑</button>
+          <button onclick="exportAllData()" title="Export to file">📁↓</button>
+        </div>
+        <div>
+          <strong>Status:</strong> <span id="connectionDetails">Initializing...</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 15px; align-items: center;">
+        <button onclick="syncWithDatabase()" class="sync-btn" style="width: 120px;" id="syncBtn">
+          Sync Now
+        </button>
+        <div id="syncStatus" class="status-indicator status-local">
+          📱 Local Mode
+        </div>
+      </div>
+    </div>
 
-        async function startMyApp() {
-            console.log('🚀 Starting with Google Sheets connection...');
-            syncEnabled = true;
-            updateSyncStatus('syncing');
-            
-            const detailsEl = document.getElementById('connectionDetails');
-            if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection...';
-            
-            try {
-                // Test connection by reading spreadsheet metadata
-                const response = await gapi.client.sheets.spreadsheets.get({
-                    spreadsheetId: SPREADSHEET_ID
-                });
-                
-                if (!response.result) {
-                    throw new Error('Cannot access spreadsheet - check permissions');
-                }
-                
-                console.log('✅ Google Sheets connected successfully');
-                console.log('📊 Spreadsheet:', response.result.properties.title);
-                
-                // Initialize sheets if they don't exist
-                await initializeSheetStructure();
-                await loadAvailableSessions();
-                updateSyncStatus('synced');
-                
-                // Load current session
-                if (currentSessionId) {
-                    await loadSessionFromSheets(currentSessionId);
-                }
-                
-                updateSessionSelector();
-                
-                console.log('✅ Google Sheets mode ready!');
-                
-            } catch (error) {
-                console.error('❌ Google Sheets access error:', error);
-                
-                if (error.status === 403) {
-                    if (detailsEl) detailsEl.textContent = 'Permission denied - make sure the spreadsheet is shared with "Anyone with the link can edit"';
-                } else if (error.status === 404) {
-                    if (detailsEl) detailsEl.textContent = 'Spreadsheet not found - check the SPREADSHEET_ID';
-                } else if (error.message.includes('API key')) {
-                    if (detailsEl) detailsEl.textContent = 'API key invalid - make sure Google Sheets API is enabled in Google Cloud Console';
-                } else {
-                    if (detailsEl) detailsEl.textContent = 'Google Sheets error: ' + error.message;
-                }
-                
-                // Fall back to offline mode
-                startMyAppOffline();
-            }
-        }
+    <div class="controls-grid">
+      <div class="control-section">
+        <div class="section-title">📊 Party Seat Configuration</div>
+        <div class="control-row">
+          <div class="control-group">
+            <label>Republican Senate Seats</label>
+            <input type="number" id="repSenateSeats" value="49" min="0" max="100" onchange="updatePartySeats()">
+          </div>
+          <div class="control-group">
+            <label>Republican House Seats</label>
+            <input type="number" id="repHouseSeats" value="232" min="0" max="435" onchange="updatePartySeats()">
+          </div>
+        </div>
+        <div class="control-row">
+          <div class="control-group">
+            <label>Democrat Senate Seats</label>
+            <input type="number" id="demSenateSeats" value="50" min="0" max="100" onchange="updatePartySeats()">
+          </div>
+          <div class="control-group">
+            <label>Democrat House Seats</label>
+            <input type="number" id="demHouseSeats" value="203" min="0" max="435" onchange="updatePartySeats()">
+          </div>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <div class="section-title">👥 Add New Faction</div>
+        <div class="control-row">
+          <div class="control-group">
+            <label for="factionName">Faction Name</label>
+            <input type="text" id="factionName" placeholder="e.g., Progressive Caucus">
+          </div>
+          <div class="control-group">
+            <label for="factionParty">Party</label>
+            <select id="factionParty">
+              <option value="republican">Republican</option>
+              <option value="democrat">Democrat</option>
+            </select>
+          </div>
+        </div>
+        <div class="control-row">
+          <div class="control-group">
+            <label for="factionSenateCount">Senate Members</label>
+            <input type="number" id="factionSenateCount" value="0" min="0" max="100">
+          </div>
+          <div class="control-group">
+            <label for="factionHouseCount">House Members</label>
+            <input type="number" id="factionHouseCount" value="0" min="0" max="435">
+          </div>
+        </div>
+        <button onclick="addFaction()">Add Faction</button>
+      </div>
+    </div>
+
+    <div class="chambers-section">
+      <div class="chamber-section">
+        <div class="chamber-header">
+          <div class="chamber-title">🏛️ Senate (Weighted Votes)</div>
+          <div style="font-size: 14px; color: #666;">
+            ⚖️ Constrained weighted voting: Base faction weight + leadership bonus, scaled to never exceed party seat total
+          </div>
+        </div>
         
-        async function startMyAppOffline() {
-            console.log('📁 Starting in offline mode...');
-            syncEnabled = false;
-            updateSyncStatus('offline');
-            
-            const detailsEl = document.getElementById('connectionDetails');
-            if (detailsEl) detailsEl.textContent = 'Using enhanced local storage with file backup';
-            
-            // Load local sessions
-            availableSessions = await loadLocalSessions();
-            if (availableSessions.length === 0) {
-                availableSessions = [{ id: 'local', name: 'Local Session' }];
-                currentSessionId = 'local';
-            } else {
-                currentSessionId = availableSessions[0].id;
-            }
-            
-            await loadLocalData();
-            updateSessionSelector();
-            
-            console.log('✅ Offline mode ready!');
-        }
-        
-        // Global variables
-        let currentSessionId = null;
-        let availableSessions = [];
-        let factions = { republican: [], democrat: [] };
-        let senators = { republican: [], democrat: [] };
-        let votes = {};
-        let partySeats = {
-            republican: { senate: 49, house: 232 },
-            democrat: { senate: 50, house: 203 }
-        };
-        let isOnline = navigator.onLine;
-        let syncEnabled = false;
+        <div class="control-row" style="margin-bottom: 20px;">
+          <div class="control-group">
+            <label for="senatorName">Senator Name</label>
+            <input type="text" id="senatorName" placeholder="Enter senator name">
+          </div>
+          <div class="control-group">
+            <label for="senatorParty">Party</label>
+            <select id="senatorParty">
+              <option value="republican">Republican</option>
+              <option value="democrat">Democrat</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="senatorRole">Role</label>
+            <select id="senatorRole">
+              <option value="senator">Senator</option>
+              <option value="party_leader">Party Leader</option>
+              <option value="party_whip">Party Whip</option>
+              <option value="caucus_chair">Caucus Chair</option>
+            </select>
+          </div>
+        </div>
+        <div class="control-row" style="margin-bottom: 20px;">
+          <div class="control-group">
+            <label for="senatorFaction">Faction</label>
+            <select id="senatorFaction">
+              <option value="">Select faction...</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>&nbsp;</label>
+            <button onclick="addSenator()">Add Senator</button>
+          </div>
+        </div>
 
-        // ===== INITIALIZATION =====
-        async function initializeApp() {
-            console.log('🚀 App starting - waiting for Google API...');
-            
-            // Set initial status
-            document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load...';
-            updateSyncStatus('offline');
-            
-            // The Google API will call startMyApp() or startMyAppOffline() when ready
-            // This function is now just for fallback timing in case Google API never loads
-            setTimeout(() => {
-                if (!syncEnabled && !window.gapi) {
-                    console.log('⏰ Google API timeout - starting offline mode');
-                    startMyAppOffline();
-                }
-            }, 20000); // 20 second fallback timeout
-        }
+        <div class="parties-grid">
+          <div class="party-section republican-section">
+            <div class="party-header">
+              <span class="party-title">🔴 Republicans</span>
+            </div>
+            <div class="seat-display">
+              Senators: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
+              <br><small>Total Weight: <span id="repSenateWeight">0</span></small>
+            </div>
+            <div id="republicanSenators"></div>
+          </div>
 
-        // ===== EVENT LISTENERS =====
-        window.addEventListener('online', () => {
-            isOnline = true;
-            console.log('📶 Back online');
-            updateSyncStatus('local');
+          <div class="party-section democrat-section">
+            <div class="party-header">
+              <span class="party-title">🔵 Democrats</span>
+            </div>
+            <div class="seat-display">
+              Senators: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
+              <br><small>Total Weight: <span id="demSenateWeight">0</span></small>
+            </div>
+            <div id="democratSenators"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chamber-section">
+        <div class="chamber-header">
+          <div class="chamber-title">🏢 House (Faction Votes)</div>
+          <div style="font-size: 14px; color: #666;">
+            ⚠️ House votes by faction - each faction vote = all faction members
+          </div>
+        </div>
+
+        <div class="parties-grid">
+          <div class="party-section republican-section">
+            <div class="party-header">
+              <span class="party-title">🔴 Republicans</span>
+            </div>
+            <div class="seat-display">
+              Seats: <span id="repHouseCurrent">0</span> / <span id="repHouseTotal">232</span>
+            </div>
+            <div id="republicanHouseFactions"></div>
+            <div class="add-faction" onclick="showAddFaction('republican')">
+              + Add Republican Faction
+            </div>
+          </div>
+
+          <div class="party-section democrat-section">
+            <div class="party-header">
+              <span class="party-title">🔵 Democrats</span>
+            </div>
+            <div class="seat-display">
+              Seats: <span id="demHouseCurrent">0</span> / <span id="demHouseTotal">203</span>
+            </div>
+            <div id="democratHouseFactions"></div>
+            <div class="add-faction" onclick="showAddFaction('democrat')">
+              + Add Democrat Faction
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="control-section">
+      <div class="control-row">
+        <div class="control-group">
+          <button onclick="exportResults()" class="export-btn">Export Results</button>
+        </div>
+        <div class="control-group">
+          <button onclick="clearAllVotes()" class="clear-btn">Clear All Votes</button>
+        </div>
+        <div class="control-group">
+          <button onclick="resetToDefaults()" class="sync-btn">Reset to Defaults</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-section">
+      <h2 style="text-align: center; margin-bottom: 30px; color: #333;">📈 Voting Results</h2>
+      <div class="results-grid">
+        <div class="chamber-results">
+          <h3 class="chamber-title">🏛️ Senate Results</h3>
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Party</th>
+                <th>AYE</th>
+                <th>NAY</th>
+                <th>PRESENT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="rep-row">
+                <td>Republican</td>
+                <td id="repSenateAye">0</td>
+                <td id="repSenateNay">0</td>
+                <td id="repSenatePres">0</td>
+              </tr>
+              <tr class="dem-row">
+                <td>Democrat</td>
+                <td id="demSenateAye">0</td>
+                <td id="demSenateNay">0</td>
+                <td id="demSenatePres">0</td>
+              </tr>
+              <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td id="totalSenateAye">0</td>
+                <td id="totalSenateNay">0</td>
+                <td id="totalSenatePres">0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="chamber-results">
+          <h3 class="chamber-title">🏢 House Results</h3>
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Party</th>
+                <th>AYE</th>
+                <th>NAY</th>
+                <th>PRESENT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="rep-row">
+                <td>Republican</td>
+                <td id="repHouseAye">0</td>
+                <td id="repHouseNay">0</td>
+                <td id="repHousePres">0</td>
+              </tr>
+              <tr class="dem-row">
+                <td>Democrat</td>
+                <td id="demHouseAye">0</td>
+                <td id="demHouseNay">0</td>
+                <td id="demHousePres">0</td>
+              </tr>
+              <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td id="totalHouseAye">0</td>
+                <td id="totalHouseNay">0</td>
+                <td id="totalHousePres">0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4) The rest of your JS logic – CRUD, rendering, autosave, localStorage, etc. -->
+  <script>
+    // ===== SHEETS CONFIG =====
+    const SHEETS_CONFIG = {
+      sessions:   { name:'Sessions',   range:'A:C' },
+      partySeats: { name:'PartySeats', range:'A:D' },
+      factions:   { name:'Factions',   range:'A:F' },
+      senators:   { name:'Senators',   range:'A:G' },
+      votes:      { name:'Votes',      range:'A:D' }
+    };
+
+    // ===== SHEET STRUCTURE & HEADER SETUP =====
+    async function initializeSheetStructure() {
+      try {
+        const meta = await gapi.client.sheets.spreadsheets.get({ spreadsheetId:SPREADSHEET_ID });
+        const existing = meta.result.sheets.map(s=>s.properties.title);
+        const required = Object.values(SHEETS_CONFIG).map(c=>c.name);
+        const reqs = [];
+        required.forEach(name=>{
+          if (!existing.includes(name)) reqs.push({ addSheet:{ properties:{ title:name } } });
         });
-
-        window.addEventListener('offline', () => {
-            isOnline = false;
-            console.log('📴 Gone offline');
-            updateSyncStatus('offline');
-        });
-
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initializeApp);
-
-        // Auto-save every 60 seconds for Google Sheets (longer to respect rate limits)
-        setInterval(() => {
-            if (syncEnabled) {
-                autoSave();
-            } else {
-                saveToLocalStorage();
-            }
-        }, 60000);
-
-        async function initializeSheetStructure() {
-            try {
-                const spreadsheet = await gapi.client.sheets.spreadsheets.get({
-                    spreadsheetId: SPREADSHEET_ID
-                });
-                
-                const existingSheets = spreadsheet.result.sheets.map(sheet => sheet.properties.title);
-                const requiredSheets = Object.values(SHEETS_CONFIG).map(config => config.name);
-                
-                // Create missing sheets
-                const requests = [];
-                requiredSheets.forEach(sheetName => {
-                    if (!existingSheets.includes(sheetName)) {
-                        requests.push({
-                            addSheet: {
-                                properties: {
-                                    title: sheetName
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                if (requests.length > 0) {
-                    await gapi.client.sheets.spreadsheets.batchUpdate({
-                        spreadsheetId: SPREADSHEET_ID,
-                        resource: { requests }
-                    });
-                    console.log(`📋 Created ${requests.length} missing sheets`);
-                }
-                
-                // Add headers to empty sheets
-                await initializeSheetHeaders();
-                
-            } catch (error) {
-                console.error('Error initializing sheet structure:', error);
-            }
+        if (reqs.length) {
+          await gapi.client.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            resource:{ requests: reqs }
+          });
+          console.log(`📋 Created ${reqs.length} missing sheets`);
         }
+        await initializeSheetHeaders();
+      } catch(e){ console.error('Error initializing sheets:',e) }
+    }
 
-        async function initializeSheetHeaders() {
-            const headers = {
-                Sessions: ['id', 'name', 'created_at'],
-                PartySeats: ['session_id', 'party', 'senate_seats', 'house_seats'],
-                Factions: ['session_id', 'id', 'name', 'party', 'senate_count', 'house_count'],
-                Senators: ['session_id', 'id', 'name', 'party', 'role', 'faction_id', 'vote_weight'],
-                Votes: ['session_id', 'entity_id', 'entity_type', 'vote_type']
-            };
-            
-            for (const [sheetName, headerRow] of Object.entries(headers)) {
-                try {
-                    // Check if sheet has headers
-                    const response = await gapi.client.sheets.spreadsheets.values.get({
-                        spreadsheetId: SPREADSHEET_ID,
-                        range: `${sheetName}!A1:Z1`
-                    });
-                    
-                    if (!response.result.values || response.result.values.length === 0) {
-                        // Add headers
-                        await gapi.client.sheets.spreadsheets.values.update({
-                            spreadsheetId: SPREADSHEET_ID,
-                            range: `${sheetName}!A1`,
-                            valueInputOption: 'USER_ENTERED',
-                            resource: {
-                                values: [headerRow]
-                            }
-                        });
-                        console.log(`📋 Added headers to ${sheetName}`);
-                    }
-                } catch (error) {
-                    console.log(`Note: Could not check/add headers for ${sheetName}:`, error.message);
-                }
-            }
-        }
-
-        // ===== GOOGLE SHEETS CRUD OPERATIONS =====
-        async function readSheet(sheetName) {
-            try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${sheetName}!${SHEETS_CONFIG[sheetName].range}`
-                });
-                
-                const values = response.result.values || [];
-                if (values.length <= 1) return []; // No data beyond headers
-                
-                const headers = values[0];
-                return values.slice(1).map(row => {
-                    const obj = {};
-                    headers.forEach((header, index) => {
-                        obj[header] = row[index] || '';
-                    });
-                    return obj;
-                });
-            } catch (error) {
-                console.error(`Error reading ${sheetName}:`, error);
-                return [];
-            }
-        }
-
-        async function writeToSheet(sheetName, data) {
-            try {
-                if (!Array.isArray(data) || data.length === 0) return;
-                
-                // Get headers
-                const headers = Object.keys(data[0]);
-                
-                // Convert objects to arrays
-                const values = data.map(obj => headers.map(header => obj[header] || ''));
-                
-                // Clear existing data (keep headers)
-                await gapi.client.sheets.spreadsheets.values.clear({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${sheetName}!A2:Z`
-                });
-                
-                // Write new data
-                if (values.length > 0) {
-                    await gapi.client.sheets.spreadsheets.values.update({
-                        spreadsheetId: SPREADSHEET_ID,
-                        range: `${sheetName}!A2`,
-                        valueInputOption: 'USER_ENTERED',
-                        resource: { values }
-                    });
-                }
-                
-                return true;
-            } catch (error) {
-                console.error(`Error writing to ${sheetName}:`, error);
-                return false;
-            }
-        }
-
-        async function appendToSheet(sheetName, data) {
-            try {
-                if (!data) return;
-                
-                const headers = Object.keys(data);
-                const values = [headers.map(header => data[header] || '')];
-                
-                await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${sheetName}!A:A`,
-                    valueInputOption: 'USER_ENTERED',
-                    insertDataOption: 'INSERT_ROWS',
-                    resource: { values }
-                });
-                
-                return true;
-            } catch (error) {
-                console.error(`Error appending to ${sheetName}:`, error);
-                return false;
-            }
-        }
-
-        async function loadAvailableSessions() {
-            try {
-                const sessions = await readSheet('sessions');
-                availableSessions = sessions.map(session => ({
-                    id: session.id,
-                    name: session.name,
-                    created_at: session.created_at
-                }));
-                
-                if (availableSessions.length === 0) {
-                    console.log('📦 No sessions found, creating default session...');
-                    const defaultSessionId = await createSession('Default Session');
-                    currentSessionId = defaultSessionId;
-                } else {
-                    currentSessionId = availableSessions[0].id;
-                }
-                
-                updateSessionSelector();
-                console.log(`📋 Loaded ${availableSessions.length} session(s) from Google Sheets`);
-                
-            } catch (error) {
-                console.error('Error loading sessions:', error);
-                throw error;
-            }
-        }
-
-        async function createSession(sessionName) {
-            try {
-                const sessionId = `session_${Date.now()}`;
-                const newSession = {
-                    id: sessionId,
-                    name: sessionName,
-                    created_at: new Date().toISOString()
-                };
-                
-                await appendToSheet('sessions', newSession);
-                
-                // Initialize default data for new session
-                await initializeSessionDefaults(sessionId);
-                
-                availableSessions.push(newSession);
-                currentSessionId = sessionId;
-                updateSessionSelector();
-                
-                console.log(`✅ Created session: ${sessionName}`);
-                return sessionId;
-                
-            } catch (error) {
-                console.error('Error creating session:', error);
-                throw error;
-            }
-        }
-
-        async function initializeSessionDefaults(sessionId) {
-            try {
-                // Add default party seats
-                const partySeatsData = [
-                    { session_id: sessionId, party: 'republican', senate_seats: 49, house_seats: 232 },
-                    { session_id: sessionId, party: 'democrat', senate_seats: 50, house_seats: 203 }
-                ];
-                
-                for (const seatData of partySeatsData) {
-                    await appendToSheet('partySeats', seatData);
-                }
-                
-                // Add default factions
-                const factionsData = [
-                    { session_id: sessionId, id: `faction_${Date.now()}_1`, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
-                    { session_id: sessionId, id: `faction_${Date.now()}_2`, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
-                    { session_id: sessionId, id: `faction_${Date.now()}_3`, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 },
-                    { session_id: sessionId, id: `faction_${Date.now()}_4`, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
-                    { session_id: sessionId, id: `faction_${Date.now()}_5`, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
-                    { session_id: sessionId, id: `faction_${Date.now()}_6`, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
-                ];
-                
-                for (const factionData of factionsData) {
-                    await appendToSheet('factions', factionData);
-                }
-                
-                // Add default senators
-                const senatorsData = [
-                    { session_id: sessionId, id: `senator_${Date.now()}_1`, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: factionsData[2].id, vote_weight: 12 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_2`, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: factionsData[2].id, vote_weight: 10 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_3`, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: factionsData[0].id, vote_weight: 7 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_4`, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: factionsData[1].id, vote_weight: 5 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_5`, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: factionsData[5].id, vote_weight: 13 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_6`, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: factionsData[5].id, vote_weight: 10 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_7`, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: factionsData[3].id, vote_weight: 8 },
-                    { session_id: sessionId, id: `senator_${Date.now()}_8`, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: factionsData[4].id, vote_weight: 5 }
-                ];
-                
-                for (const senatorData of senatorsData) {
-                    await appendToSheet('senators', senatorData);
-                }
-                
-            } catch (error) {
-                console.error('Error initializing session defaults:', error);
-            }
-        }
-
-        async function loadSessionFromSheets(sessionId, showProgress = true) {
-            if (!syncEnabled) {
-                await loadLocalData();
-                return;
-            }
-            
-            try {
-                if (showProgress) updateSyncStatus('syncing');
-                
-                // Load party seats
-                const allPartySeats = await readSheet('partySeats');
-                const sessionPartySeats = allPartySeats.filter(ps => ps.session_id === sessionId);
-                
-                // Load factions
-                const allFactions = await readSheet('factions');
-                const sessionFactions = allFactions.filter(f => f.session_id === sessionId);
-                
-                // Load senators
-                const allSenators = await readSheet('senators');
-                const sessionSenators = allSenators.filter(s => s.session_id === sessionId);
-                
-                // Load votes
-                const allVotes = await readSheet('votes');
-                const sessionVotes = allVotes.filter(v => v.session_id === sessionId);
-                
-                // Transform data to local format
-                partySeats = {
-                    republican: { senate: 49, house: 232 },
-                    democrat: { senate: 50, house: 203 }
-                };
-                
-                sessionPartySeats.forEach(ps => {
-                    partySeats[ps.party] = {
-                        senate: parseInt(ps.senate_seats) || 0,
-                        house: parseInt(ps.house_seats) || 0
-                    };
-                });
-                
-                factions = { republican: [], democrat: [] };
-                sessionFactions.forEach(f => {
-                    factions[f.party].push({
-                        id: f.id,
-                        name: f.name,
-                        party: f.party,
-                        senate_count: parseInt(f.senate_count) || 0,
-                        house_count: parseInt(f.house_count) || 0
-                    });
-                });
-                
-                senators = { republican: [], democrat: [] };
-                sessionSenators.forEach(s => {
-                    senators[s.party].push({
-                        id: s.id,
-                        name: s.name,
-                        party: s.party,
-                        role: s.role,
-                        faction_id: s.faction_id || null
-                    });
-                });
-                
-                votes = {};
-                sessionVotes.forEach(v => {
-                    if (v.vote_type && v.vote_type !== '') {
-                        votes[v.entity_id] = v.vote_type;
-                    }
-                });
-                
-                clearWeightCache();
-                updatePartySeatsDisplay();
-                updateFactionSelectors();
-                renderAll();
-                updateResults();
-                
-                if (showProgress) {
-                    updateSyncStatus('synced');
-                    const detailsEl = document.getElementById('connectionDetails');
-                    if (detailsEl) {
-                        detailsEl.textContent = `Loaded from Google Sheets at ${new Date().toLocaleTimeString()}`;
-                    }
-                }
-                
-                console.log(`📊 Session loaded from Google Sheets: ${sessionId}`);
-                
-            } catch (error) {
-                console.error('Error loading session from Google Sheets:', error);
-                if (showProgress) updateSyncStatus('offline');
-                throw error;
-            }
-        }
-
-        async function saveSessionToSheets() {
-            if (!syncEnabled || !currentSessionId) return;
-            
-            try {
-                updateSyncStatus('syncing');
-                
-                // Get all current data from sheets
-                const allPartySeats = await readSheet('partySeats');
-                const allFactions = await readSheet('factions');
-                const allSenators = await readSheet('senators');
-                const allVotes = await readSheet('votes');
-                
-                // Update party seats
-                const updatedPartySeats = allPartySeats.filter(ps => ps.session_id !== currentSessionId);
-                Object.entries(partySeats).forEach(([party, seats]) => {
-                    updatedPartySeats.push({
-                        session_id: currentSessionId,
-                        party: party,
-                        senate_seats: seats.senate,
-                        house_seats: seats.house
-                    });
-                });
-                await writeToSheet('partySeats', updatedPartySeats);
-                
-                // Update factions
-                const updatedFactions = allFactions.filter(f => f.session_id !== currentSessionId);
-                Object.values(factions).flat().forEach(faction => {
-                    updatedFactions.push({
-                        session_id: currentSessionId,
-                        id: faction.id,
-                        name: faction.name,
-                        party: faction.party,
-                        senate_count: faction.senate_count,
-                        house_count: faction.house_count
-                    });
-                });
-                await writeToSheet('factions', updatedFactions);
-                
-                // Update senators
-                const updatedSenators = allSenators.filter(s => s.session_id !== currentSessionId);
-                Object.values(senators).flat().forEach(senator => {
-                    const weights = calculateAllPartyWeights(senator.party);
-                    const voteWeight = weights[senator.id] || 1;
-                    
-                    updatedSenators.push({
-                        session_id: currentSessionId,
-                        id: senator.id,
-                        name: senator.name,
-                        party: senator.party,
-                        role: senator.role,
-                        faction_id: senator.faction_id || '',
-                        vote_weight: voteWeight
-                    });
-                });
-                await writeToSheet('senators', updatedSenators);
-                
-                // Update votes
-                const updatedVotes = allVotes.filter(v => v.session_id !== currentSessionId);
-                Object.entries(votes).forEach(([entityId, voteType]) => {
-                    // Determine entity type
-                    let entityType = 'faction';
-                    for (const partySenators of Object.values(senators)) {
-                        if (partySenators.some(s => s.id === entityId)) {
-                            entityType = 'senator';
-                            break;
-                        }
-                    }
-                    
-                    updatedVotes.push({
-                        session_id: currentSessionId,
-                        entity_id: entityId,
-                        entity_type: entityType,
-                        vote_type: voteType
-                    });
-                });
-                await writeToSheet('votes', updatedVotes);
-                
-                updateSyncStatus('synced');
-                const detailsEl = document.getElementById('connectionDetails');
-                if (detailsEl) {
-                    detailsEl.textContent = `Saved to Google Sheets at ${new Date().toLocaleTimeString()}`;
-                }
-                console.log('💾 Session saved to Google Sheets');
-                
-            } catch (error) {
-                console.error('Error saving to Google Sheets:', error);
-                updateSyncStatus('offline');
-                throw error;
-            }
-        }
-
-        // ===== SESSION MANAGEMENT =====
-        async function switchSession() {
-            const newSessionId = document.getElementById('sessionSelect').value;
-            
-            if (newSessionId === currentSessionId) return;
-            
-            // Save current session
-            if (syncEnabled) {
-                await saveSessionToSheets();
-            } else {
-                saveToLocalStorage();
-            }
-            
-            currentSessionId = newSessionId;
-            
-            if (syncEnabled) {
-                await loadSessionFromSheets(currentSessionId);
-            } else {
-                await loadLocalData();
-            }
-            
-            console.log(`🔄 Switched to session: ${currentSessionId}`);
-        }
-
-        async function createNewSession() {
-            const name = prompt('Enter new session name:');
-            if (!name || name.trim() === '') return;
-            
-            const sessionName = name.trim();
-            
-            try {
-                if (syncEnabled) {
-                    await createSession(sessionName);
-                    await loadSessionFromSheets(currentSessionId);
-                } else {
-                    // Enhanced local mode
-                    await createLocalSession(sessionName);
-                }
-                
-                updateSessionSelector();
-                document.getElementById('sessionSelect').value = currentSessionId;
-                renderAll();
-                updateResults();
-                
-            } catch (error) {
-                alert('Error creating session: ' + error.message);
-            }
-        }
-
-        function updateSessionSelector() {
-            const select = document.getElementById('sessionSelect');
-            select.innerHTML = '';
-            
-            availableSessions.forEach(session => {
-                const option = document.createElement('option');
-                option.value = session.id;
-                option.textContent = session.name;
-                select.appendChild(option);
+    async function initializeSheetHeaders() {
+      const headers = {
+        Sessions:   ['id','name','created_at'],
+        PartySeats: ['session_id','party','senate_seats','house_seats'],
+        Factions:   ['session_id','id','name','party','senate_count','house_count'],
+        Senators:   ['session_id','id','name','party','role','faction_id','vote_weight'],
+        Votes:      ['session_id','entity_id','entity_type','vote_type']
+      };
+      for (let [sheet, row] of Object.entries(headers)) {
+        try {
+          const resp = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId:SPREADSHEET_ID, range:`${sheet}!A1:Z1`
+          });
+          if (!resp.result.values || !resp.result.values.length) {
+            await gapi.client.sheets.spreadsheets.values.update({
+              spreadsheetId:SPREADSHEET_ID,
+              range: `${sheet}!A1`,
+              valueInputOption:'USER_ENTERED',
+              resource:{ values:[row] }
             });
-            
-            select.value = currentSessionId;
+            console.log(`📋 Added headers to ${sheet}`);
+          }
+        } catch(e){
+          console.warn(`Could not init headers for ${sheet}:`,e.message);
         }
+      }
+    }
 
-        // ===== AUTO-SAVE FUNCTIONALITY =====
-        async function autoSave() {
-            try {
-                if (syncEnabled) {
-                    // Debounce database saves
-                    clearTimeout(window.autoSaveTimeout);
-                    window.autoSaveTimeout = setTimeout(async () => {
-                        await saveSessionToSheets();
-                    }, 2000);
-                } else {
-                    saveToLocalStorage();
-                }
-            } catch (error) {
-                console.error('Auto-save error:', error);
-            }
+    // ===== CRUD HELPERS =====
+    async function readSheet(name) {
+      try {
+        const r = await gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId:SPREADSHEET_ID,
+          range:`${name}!${SHEETS_CONFIG[name].range}`
+        });
+        const vals = r.result.values||[];
+        if (vals.length<=1) return [];
+        const hdr = vals[0];
+        return vals.slice(1).map(row=>{
+          const obj={};
+          hdr.forEach((h,i)=> obj[h] = row[i]||'');
+          return obj;
+        });
+      } catch(e){ console.error(`Error reading ${name}:`,e); return [] }
+    }
+    async function writeToSheet(name,data){
+      if (!data.length) return;
+      const hdr = Object.keys(data[0]);
+      const vals = data.map(o=> hdr.map(h=>o[h]||''));
+      await gapi.client.sheets.spreadsheets.values.clear({
+        spreadsheetId:SPREADSHEET_ID,
+        range:`${name}!A2:Z`
+      });
+      await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId:SPREADSHEET_ID,
+        range:`${name}!A2`,
+        valueInputOption:'USER_ENTERED',
+        resource:{ values:vals }
+      });
+    }
+    async function appendToSheet(name,obj){
+      const vals = [Object.keys(obj).map(k=>obj[k]||'')];
+      await gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId:SPREADSHEET_ID,
+        range:`${name}!A:A`,
+        valueInputOption:'USER_ENTERED',
+        insertDataOption:'INSERT_ROWS',
+        resource:{ values:vals }
+      });
+    }
+
+    // ===== SESSION MANAGEMENT =====
+    async function loadAvailableSessions(){
+      const rows = await readSheet('sessions');
+      availableSessions = rows.map(r=>({ id:r.id, name:r.name, created_at:r.created_at }));
+      if (!availableSessions.length) {
+        const def = await createSession('Default Session');
+        currentSessionId = def;
+      } else {
+        currentSessionId = availableSessions[0].id;
+      }
+      updateSessionSelector();
+      console.log(`📋 Loaded ${availableSessions.length} sessions`);
+    }
+    async function createSession(name){
+      const id = `session_${Date.now()}`;
+      const rec = { session_id:id, name, created_at:new Date().toISOString() };
+      await appendToSheet('sessions', { id, name, created_at:rec.created_at });
+      await initializeSessionDefaults(id);
+      availableSessions.push({ id, name, created_at:rec.created_at });
+      currentSessionId = id;
+      updateSessionSelector();
+      console.log(`✅ Created session ${name}`);
+      return id;
+    }
+    async function initializeSessionDefaults(id){
+      const seats = [
+        { session_id:id, party:'republican', senate_seats:49, house_seats:232 },
+        { session_id:id, party:'democrat',   senate_seats:50, house_seats:203 }
+      ];
+      for (let s of seats) await appendToSheet('partySeats', s);
+
+      const facs = [
+        { session_id:id, id:`f_${Date.now()}_1`, name:'Freedom Caucus',   party:'republican', senate_count:8,  house_count:45 },
+        { session_id:id, id:`f_${Date.now()}_2`, name:'Main Street',      party:'republican', senate_count:12, house_count:65 },
+        { session_id:id, id:`f_${Date.now()}_3`, name:'Traditional Rep',  party:'republican', senate_count:29, house_count:122 },
+        { session_id:id, id:`f_${Date.now()}_4`, name:'Progressive Caucus',party:'democrat',   senate_count:20, house_count:98 },
+        { session_id:id, id:`f_${Date.now()}_5`, name:'Blue Dog Coalition',party:'democrat',   senate_count:8,  house_count:25 },
+        { session_id:id, id:`f_${Date.now()}_6`, name:'Moderate Dems',     party:'democrat',   senate_count:22, house_count:80 }
+      ];
+      for (let f of facs) await appendToSheet('factions', f);
+
+      const sens = [
+        { session_id:id, id:`s_${Date.now()}_1`, name:'Mitch McConnell (R-KY)', party:'republican', role:'party_leader', faction_id:facs[2].id, vote_weight:12 },
+        { session_id:id, id:`s_${Date.now()}_2`, name:'John Thune (R-SD)', party:'republican', role:'party_whip', faction_id:facs[2].id, vote_weight:10 },
+        { session_id:id, id:`s_${Date.now()}_3`, name:'Ted Cruz (R-TX)', party:'republican', role:'caucus_chair', faction_id:facs[0].id, vote_weight:7 },
+        { session_id:id, id:`s_${Date.now()}_4`, name:'Susan Collins (R-ME)', party:'republican', role:'caucus_chair', faction_id:facs[1].id, vote_weight:5 },
+        { session_id:id, id:`s_${Date.now()}_5`, name:'Chuck Schumer (D-NY)', party:'democrat', role:'party_leader', faction_id:facs[5].id, vote_weight:13 },
+        { session_id:id, id:`s_${Date.now()}_6`, name:'Dick Durbin (D-IL)', party:'democrat', role:'party_whip', faction_id:facs[5].id, vote_weight:10 },
+        { session_id:id, id:`s_${Date.now()}_7`, name:'Bernie Sanders (I-VT)', party:'democrat', role:'caucus_chair', faction_id:facs[3].id, vote_weight:8 },
+        { session_id:id, id:`s_${Date.now()}_8`, name:'Joe Manchin (D-WV)', party:'democrat', role:'caucus_chair', faction_id:facs[4].id, vote_weight:5 }
+      ];
+      for (let s of sens) await appendToSheet('senators', s);
+    }
+
+    async function loadSessionFromSheets(id){
+      if (!syncEnabled) return loadLocalData();
+      updateSyncStatus('syncing');
+      const allSeats = await readSheet('partySeats');
+      const allFacs = await readSheet('factions');
+      const allSens = await readSheet('senators');
+      const allVotes= await readSheet('votes');
+
+      // Filter for this session
+      const sp = allSeats.filter(s=>s.session_id===id);
+      partySeats = { republican:{}, democrat:{} };
+      sp.forEach(s=>{
+        partySeats[s.party] = {
+          senate: parseInt(s.senate_seats)||0,
+          house:  parseInt(s.house_seats)||0
+        };
+      });
+
+      factions = { republican:[], democrat:[] };
+      allFacs.filter(f=>f.session_id===id).forEach(f=>{
+        factions[f.party].push({
+          id:f.id,name:f.name,party:f.party,
+          senate_count:parseInt(f.senate_count)||0,
+          house_count: parseInt(f.house_count )||0
+        });
+      });
+
+      senators = { republican:[], democrat:[] };
+      allSens.filter(s=>s.session_id===id).forEach(s=>{
+        senators[s.party].push({
+          id:s.id,name:s.name,party:s.party,
+          role:s.role,faction_id:s.faction_id
+        });
+      });
+
+      votes = {};
+      allVotes.filter(v=>v.session_id===id).forEach(v=>{ votes[v.entity_id]=v.vote_type; });
+
+      clearWeightCache();
+      updatePartySeatsDisplay();
+      updateFactionSelectors();
+      renderAll();
+      updateResults();
+      updateSyncStatus('synced');
+      document.getElementById('connectionDetails').textContent =
+        `Loaded from Google Sheets at ${new Date().toLocaleTimeString()}`;
+      console.log(`📊 Session ${id} loaded`);
+    }
+
+    async function saveSessionToSheets(){
+      if (!syncEnabled || !currentSessionId) return;
+      updateSyncStatus('syncing');
+
+      // Fetch all existing rows, remove this session's rows, then rewrite with updated data…
+      const allSeats = await readSheet('partySeats');
+      const filteredSeats = allSeats.filter(s=>s.session_id!==currentSessionId);
+      Object.entries(partySeats).forEach(([p,sec])=>{
+        filteredSeats.push({
+          session_id: currentSessionId,
+          party:p,
+          senate_seats:sec.senate,
+          house_seats:sec.house
+        });
+      });
+      await writeToSheet('partySeats', filteredSeats);
+
+      const allFacs = await readSheet('factions');
+      const filteredFacs = allFacs.filter(f=>f.session_id!==currentSessionId);
+      Object.values(factions).flat().forEach(faction => {
+        filteredFacs.push({
+          session_id: currentSessionId,
+          id: faction.id,
+          name: faction.name,
+          party: faction.party,
+          senate_count: faction.senate_count,
+          house_count: faction.house_count
+        });
+      });
+      await writeToSheet('factions', filteredFacs);
+
+      const allSens = await readSheet('senators');
+      const filteredSens = allSens.filter(s=>s.session_id!==currentSessionId);
+      Object.values(senators).flat().forEach(senator => {
+        const weights = calculateAllPartyWeights(senator.party);
+        const voteWeight = weights[senator.id] || 1;
+        
+        filteredSens.push({
+          session_id: currentSessionId,
+          id: senator.id,
+          name: senator.name,
+          party: senator.party,
+          role: senator.role,
+          faction_id: senator.faction_id || '',
+          vote_weight: voteWeight
+        });
+      });
+      await writeToSheet('senators', filteredSens);
+
+      const allVotes = await readSheet('votes');
+      const filteredVotes = allVotes.filter(v=>v.session_id!==currentSessionId);
+      Object.entries(votes).forEach(([entityId, voteType]) => {
+        let entityType = 'faction';
+        for (const partySenators of Object.values(senators)) {
+          if (partySenators.some(s => s.id === entityId)) {
+            entityType = 'senator';
+            break;
+          }
         }
+        
+        filteredVotes.push({
+          session_id: currentSessionId,
+          entity_id: entityId,
+          entity_type: entityType,
+          vote_type: voteType
+        });
+      });
+      await writeToSheet('votes', filteredVotes);
 
-        // ===== ENHANCED LOCAL STORAGE =====
-        async function loadLocalSessions() {
-            try {
-                const stored = localStorage.getItem('votingSystem_sessions');
-                if (stored) {
-                    return JSON.parse(stored);
-                }
-                return [];
-            } catch (error) {
-                console.error('Error loading local sessions:', error);
-                return [];
-            }
+      updateSyncStatus('synced');
+      document.getElementById('connectionDetails').textContent =
+        `Saved to Google Sheets at ${new Date().toLocaleTimeString()}`;
+      console.log('💾 Session saved');
+    }
+
+    // ===== LOCAL STORAGE FALLBACK =====
+    async function loadLocalSessions(){
+      try {
+        return JSON.parse(localStorage.getItem('votingSystem_sessions'))||[];
+      } catch(e){ return [] }
+    }
+    function saveLocalSessions(){
+      localStorage.setItem('votingSystem_sessions', JSON.stringify(availableSessions));
+    }
+    async function loadLocalData(){
+      const raw = localStorage.getItem(`votingSystem_${currentSessionId}`);
+      if (raw) {
+        const d = JSON.parse(raw);
+        factions    = d.factions    || factions;
+        senators    = d.senators    || senators;
+        votes       = d.votes       || votes;
+        partySeats  = d.partySeats  || partySeats;
+        document.getElementById('connectionDetails').textContent =
+          `Local data from ${new Date(d.lastSaved).toLocaleString()}`;
+      } else {
+        initializeDefaultData();
+        document.getElementById('connectionDetails').textContent =
+          'Initialized with default data – use 📁↓ to backup';
+      }
+      clearWeightCache();
+      updatePartySeatsDisplay();
+      updateFactionSelectors();
+      renderAll();
+      updateResults();
+    }
+    function saveToLocalStorage(){
+      localStorage.setItem(
+        `votingSystem_${currentSessionId}`,
+        JSON.stringify({ factions, senators, votes, partySeats, lastSaved:new Date().toISOString() })
+      );
+      saveLocalSessions();
+      document.getElementById('connectionDetails').textContent =
+        `Saved locally at ${new Date().toLocaleTimeString()} – use 📁↓ to backup`;
+      console.log('💾 Data saved locally');
+    }
+    function initializeDefaultData(){
+      factions = {
+        republican: [
+          { id: Date.now() + 1, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
+          { id: Date.now() + 2, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
+          { id: Date.now() + 3, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 }
+        ],
+        democrat: [
+          { id: Date.now() + 4, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
+          { id: Date.now() + 5, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
+          { id: Date.now() + 6, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
+        ]
+      };
+      
+      senators = {
+        republican: [
+          { id: Date.now() + 11, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: Date.now() + 3 },
+          { id: Date.now() + 12, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: Date.now() + 3 },
+          { id: Date.now() + 13, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 1 },
+          { id: Date.now() + 14, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 2 }
+        ],
+        democrat: [
+          { id: Date.now() + 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: Date.now() + 6 },
+          { id: Date.now() + 22, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: Date.now() + 6 },
+          { id: Date.now() + 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 4 },
+          { id: Date.now() + 24, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 5 }
+        ]
+      };
+      
+      votes = {};
+      partySeats = {
+        republican: { senate: 49, house: 232 },
+        democrat: { senate: 50, house: 203 }
+      };
+      
+      clearWeightCache();
+    }
+
+    function exportAllData() {
+      const exportData = {
+        sessions: availableSessions,
+        sessionData: {}
+      };
+      
+      availableSessions.forEach(session => {
+        const stored = localStorage.getItem(`votingSystem_${session.id}`);
+        if (stored) {
+          exportData.sessionData[session.id] = JSON.parse(stored);
         }
+      });
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voting_system_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      console.log('📁 Exported all data to file');
+    }
 
-        function saveLocalSessions() {
-            try {
-                localStorage.setItem('votingSystem_sessions', JSON.stringify(availableSessions));
-            } catch (error) {
-                console.error('Error saving local sessions:', error);
-            }
-        }
-
-        async function createLocalSession(sessionName) {
-            const sessionId = `local_${Date.now()}`;
-            const newSession = {
-                id: sessionId,
-                name: sessionName,
-                created_at: new Date().toISOString()
-            };
-            
-            availableSessions.push(newSession);
+    function importAllData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+          const text = await file.text();
+          const importData = JSON.parse(text);
+          
+          if (importData.sessions && importData.sessionData) {
+            availableSessions = importData.sessions;
             saveLocalSessions();
             
-            // Initialize with default data
-            currentSessionId = sessionId;
-            initializeDefaultData();
-            saveToLocalStorage();
-            
-            return sessionId;
-        }
-
-        function exportAllData() {
-            const exportData = {
-                sessions: availableSessions,
-                sessionData: {}
-            };
-            
-            // Export all session data
-            availableSessions.forEach(session => {
-                const stored = localStorage.getItem(`votingSystem_${session.id}`);
-                if (stored) {
-                    exportData.sessionData[session.id] = JSON.parse(stored);
-                }
+            Object.entries(importData.sessionData).forEach(([sessionId, data]) => {
+              localStorage.setItem(`votingSystem_${sessionId}`, JSON.stringify(data));
             });
             
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `voting_system_backup_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            console.log('📁 Exported all data to file');
-        }
-
-        function importAllData() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                try {
-                    const text = await file.text();
-                    const importData = JSON.parse(text);
-                    
-                    if (importData.sessions && importData.sessionData) {
-                        // Import sessions
-                        availableSessions = importData.sessions;
-                        saveLocalSessions();
-                        
-                        // Import session data
-                        Object.entries(importData.sessionData).forEach(([sessionId, data]) => {
-                            localStorage.setItem(`votingSystem_${sessionId}`, JSON.stringify(data));
-                        });
-                        
-                        // Switch to first imported session
-                        if (availableSessions.length > 0) {
-                            currentSessionId = availableSessions[0].id;
-                            await loadLocalData();
-                            updateSessionSelector();
-                        }
-                        
-                        const detailsEl = document.getElementById('connectionDetails');
-                        if (detailsEl) {
-                            detailsEl.textContent = `Imported ${availableSessions.length} sessions from file`;
-                        }
-                        
-                        console.log('📁 Imported all data from file');
-                        alert('Data imported successfully!');
-                    } else {
-                        throw new Error('Invalid file format');
-                    }
-                } catch (error) {
-                    console.error('Import error:', error);
-                    alert('Error importing file: ' + error.message);
-                }
-            };
-            
-            input.click();
-        }
-
-        async function loadLocalData() {
-            try {
-                const stored = localStorage.getItem(`votingSystem_${currentSessionId}`);
-                if (stored) {
-                    const data = JSON.parse(stored);
-                    factions = data.factions || { republican: [], democrat: [] };
-                    senators = data.senators || { republican: [], democrat: [] };
-                    votes = data.votes || {};
-                    partySeats = data.partySeats || {
-                        republican: { senate: 49, house: 232 },
-                        democrat: { senate: 50, house: 203 }
-                    };
-                    
-                    // Safely update connection details
-                    const detailsEl = document.getElementById('connectionDetails');
-                    if (detailsEl && data.lastSaved) {
-                        detailsEl.textContent = `Local data from ${new Date(data.lastSaved).toLocaleString()}`;
-                    } else if (detailsEl) {
-                        detailsEl.textContent = 'Using enhanced local storage with file backup';
-                    }
-                } else {
-                    initializeDefaultData();
-                    const detailsEl = document.getElementById('connectionDetails');
-                    if (detailsEl) {
-                        detailsEl.textContent = 'Initialized with default data - use 📁↓ to backup';
-                    }
-                }
-                
-                clearWeightCache();
-                updatePartySeatsDisplay();
-                updateFactionSelectors();
-                renderAll();
-                updateResults();
-                
-                console.log('📱 Local data loaded successfully');
-                
-            } catch (error) {
-                console.error('Error loading local data:', error);
-                initializeDefaultData();
-                const detailsEl = document.getElementById('connectionDetails');
-                if (detailsEl) {
-                    detailsEl.textContent = 'Error loading data, using defaults';
-                }
+            if (availableSessions.length > 0) {
+              currentSessionId = availableSessions[0].id;
+              await loadLocalData();
+              updateSessionSelector();
             }
-        }
-
-        function saveToLocalStorage() {
-            const data = {
-                factions,
-                senators,
-                votes,
-                partySeats,
-                lastSaved: new Date().toISOString()
-            };
             
-            try {
-                localStorage.setItem(`votingSystem_${currentSessionId}`, JSON.stringify(data));
-                saveLocalSessions(); // Also save session list
-                
-                const detailsEl = document.getElementById('connectionDetails');
-                if (detailsEl) {
-                    detailsEl.textContent = `Saved locally at ${new Date().toLocaleTimeString()} - use 📁↓ to backup`;
-                }
-                console.log('💾 Data saved to localStorage');
-            } catch (error) {
-                console.error('Error saving to localStorage:', error);
-            }
-        }
-
-        function initializeDefaultData() {
-            factions = {
-                republican: [
-                    { id: Date.now() + 1, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
-                    { id: Date.now() + 2, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
-                    { id: Date.now() + 3, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 }
-                ],
-                democrat: [
-                    { id: Date.now() + 4, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
-                    { id: Date.now() + 5, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
-                    { id: Date.now() + 6, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
-                ]
-            };
-            
-            senators = {
-                republican: [
-                    { id: Date.now() + 11, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: Date.now() + 3 },
-                    { id: Date.now() + 12, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: Date.now() + 3 },
-                    { id: Date.now() + 13, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 1 },
-                    { id: Date.now() + 14, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 2 }
-                ],
-                democrat: [
-                    { id: Date.now() + 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: Date.now() + 6 },
-                    { id: Date.now() + 22, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: Date.now() + 6 },
-                    { id: Date.now() + 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 4 },
-                    { id: Date.now() + 24, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 5 }
-                ]
-            };
-            
-            votes = {};
-            partySeats = {
-                republican: { senate: 49, house: 232 },
-                democrat: { senate: 50, house: 203 }
-            };
-            
-            clearWeightCache(); // Clear weights when initializing defaults
-        }
-
-        function updateSyncStatus(status) {
-            const statusEl = document.getElementById('syncStatus');
-            const syncBtn = document.getElementById('syncBtn');
             const detailsEl = document.getElementById('connectionDetails');
-            
-            if (statusEl) {
-                statusEl.className = 'status-indicator status-' + status;
+            if (detailsEl) {
+              detailsEl.textContent = `Imported ${availableSessions.length} sessions from file`;
             }
             
-            switch(status) {
-                case 'local':
-                    if (statusEl) statusEl.textContent = '📁 Local + File Backup';
-                    if (detailsEl && !detailsEl.textContent.includes('Google API blocked') && !detailsEl.textContent.includes('Permission denied')) {
-                        detailsEl.textContent = 'Google Sheets unavailable - using enhanced local storage with file backup';
-                    }
-                    if (syncBtn) syncBtn.disabled = false;
-                    break;
-                case 'syncing':
-                    if (statusEl) statusEl.textContent = '🔄 Syncing...';
-                    if (detailsEl) detailsEl.textContent = 'Saving to Google Sheets...';
-                    if (syncBtn) syncBtn.disabled = true;
-                    break;
-                case 'synced':
-                    if (statusEl) statusEl.textContent = '📊 Google Sheets';
-                    if (detailsEl) detailsEl.textContent = `Connected to Google Sheets - last sync: ${new Date().toLocaleTimeString()}`;
-                    if (syncBtn) syncBtn.disabled = false;
-                    break;
-                case 'offline':
-                    if (statusEl) statusEl.textContent = '📁 Local + File Backup';
-                    if (detailsEl && !detailsEl.textContent.includes('Google API blocked') && !detailsEl.textContent.includes('Permission denied') && !detailsEl.textContent.includes('API key')) {
-                        detailsEl.textContent = 'Google Sheets connection failed - using enhanced local storage with import/export';
-                    }
-                    if (syncBtn) syncBtn.disabled = false;
-                    break;
-            }
+            console.log('📁 Imported all data from file');
+            alert('Data imported successfully!');
+          } else {
+            throw new Error('Invalid file format');
+          }
+        } catch (error) {
+          console.error('Import error:', error);
+          alert('Error importing file: ' + error.message);
         }
+      };
+      
+      input.click();
+    }
 
-        async function syncWithDatabase() {
-            if (!syncEnabled) {
-                // Enhanced local save with file persistence option
-                saveToLocalStorage();
-                updateSyncStatus('local');
-                
-                const btn = document.getElementById('syncBtn');
-                const originalText = btn.textContent;
-                btn.textContent = 'Saved!';
-                
-                // Offer export option
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
-                    if (shouldExport) {
-                        exportAllData();
-                    }
-                }, 2000);
-                return;
-            }
-            
-            console.log('🔄 Starting database sync...');
-            
-            try {
-                await saveSessionToSheets();
-                
-                // Show success feedback
-                const btn = document.getElementById('syncBtn');
-                const originalText = btn.textContent;
-                btn.textContent = 'Synced!';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                }, 2000);
-                
-            } catch (error) {
-                console.error('❌ Sync failed:', error);
-                alert('Sync failed: ' + error.message);
-            }
+    // ===== VOTE WEIGHT CALCULATIONS =====
+    function calculateSenatorVoteWeight(senator, party) {
+      if (window.cachedWeights && window.cachedWeights[party] && window.cachedWeights[party][senator.id] !== undefined) {
+        return window.cachedWeights[party][senator.id];
+      }
+      return calculateAllPartyWeights(party)[senator.id] || 0;
+    }
+
+    function calculateAllPartyWeights(party) {
+      const totalPartySeats = partySeats[party].senate;
+      if (totalPartySeats === 0) return {};
+      
+      const partySenators = senators[party];
+      if (partySenators.length === 0) return {};
+      
+      const idealWeights = {};
+      partySenators.forEach(senator => {
+        let baseWeight = 0;
+        if (senator.faction_id) {
+          const faction = factions[party].find(f => f.id === senator.faction_id);
+          if (faction && faction.senate_count > 0) {
+            const factionPlayers = partySenators.filter(s => s.faction_id === senator.faction_id);
+            baseWeight = faction.senate_count / factionPlayers.length;
+          }
         }
-
-        // ===== PARTY SEATS MANAGEMENT =====
-        function updatePartySeats() {
-            partySeats = {
-                republican: {
-                    senate: parseInt(document.getElementById('repSenateSeats').value) || 0,
-                    house: parseInt(document.getElementById('repHouseSeats').value) || 0
-                },
-                democrat: {
-                    senate: parseInt(document.getElementById('demSenateSeats').value) || 0,
-                    house: parseInt(document.getElementById('demHouseSeats').value) || 0
-                }
-            };
-            
-            clearWeightCache();
-            updatePartySeatsDisplay();
-            updateSeatCounts();
-            autoSave();
-            updateResults();
-        }
-
-        function updatePartySeatsDisplay() {
-            document.getElementById('repSenateSeats').value = partySeats.republican.senate;
-            document.getElementById('repHouseSeats').value = partySeats.republican.house;
-            document.getElementById('demSenateSeats').value = partySeats.democrat.senate;
-            document.getElementById('demHouseSeats').value = partySeats.democrat.house;
-            
-            document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
-            document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
-            document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
-            document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
-        }
-
-        // ===== FACTION MANAGEMENT =====
-        function addFaction() {
-            const name = document.getElementById('factionName').value.trim();
-            const party = document.getElementById('factionParty').value;
-            const senateCount = parseInt(document.getElementById('factionSenateCount').value) || 0;
-            const houseCount = parseInt(document.getElementById('factionHouseCount').value) || 0;
-
-            if (!name) {
-                alert('Please enter a faction name');
-                return;
-            }
-
-            const newFaction = {
-                id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
-                name: name,
-                party: party,
-                senate_count: senateCount,
-                house_count: houseCount
-            };
-            
-            factions[party].push(newFaction);
-            
-            document.getElementById('factionName').value = '';
-            document.getElementById('factionSenateCount').value = '0';
-            document.getElementById('factionHouseCount').value = '0';
-            
-            clearWeightCache();
-            updateFactionSelectors();
-            renderAll();
-            updateResults();
-            autoSave();
-        }
-
-        function showAddFaction(party) {
-            document.getElementById('factionParty').value = party;
-            document.getElementById('factionName').focus();
-        }
-
-        function removeFaction(party, id) {
-            factions[party] = factions[party].filter(f => f.id !== id);
-            delete votes[id];
-            clearWeightCache(); // Clear weights when factions change
-            updateFactionSelectors();
-            renderAll();
-            updateResults();
-            autoSave();
-        }
-
-        function updateFactionSelectors() {
-            const senatorFactionSelect = document.getElementById('senatorFaction');
-            senatorFactionSelect.innerHTML = '<option value="">Select faction...</option>';
-            
-            ['republican', 'democrat'].forEach(party => {
-                factions[party].forEach(faction => {
-                    const option = document.createElement('option');
-                    option.value = faction.id;
-                    option.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
-                    senatorFactionSelect.appendChild(option);
-                });
-            });
-        }
-
-        // ===== SENATOR MANAGEMENT =====
-        function addSenator() {
-            const name = document.getElementById('senatorName').value.trim();
-            const party = document.getElementById('senatorParty').value;
-            const role = document.getElementById('senatorRole').value;
-            const factionId = document.getElementById('senatorFaction').value;
-
-            if (!name) {
-                alert('Please enter a senator name');
-                return;
-            }
-
-            // Validate role restrictions
-            if (role === 'party_leader' || role === 'party_whip') {
-                const existingRoles = senators[party].filter(s => s.role === role);
-                if (existingRoles.length > 0) {
-                    alert(`There can only be one ${role.replace('_', ' ')} per party. Current ${role.replace('_', ' ')}: ${existingRoles[0].name}`);
-                    return;
-                }
-            }
-
-            const newSenator = {
-                id: Date.now(),
-                name: name,
-                party: party,
-                role: role,
-                faction_id: factionId ? factionId : null
-            };
-            
-            senators[party].push(newSenator);
-            document.getElementById('senatorName').value = '';
-            
-            clearWeightCache(); // Clear weights when senators change
-            renderAll();
-            updateResults();
-            autoSave();
-        }
-
-        function removeSenator(party, id) {
-            senators[party] = senators[party].filter(s => s.id !== id);
-            delete votes[id];
-            clearWeightCache(); // Clear weights when senators change
-            renderAll();
-            updateResults();
-            autoSave();
-        }
-
-        // ===== VOTE WEIGHT CALCULATIONS (FIXED) =====
-        function calculateSenatorVoteWeight(senator, party) {
-            // Use cached weights if available
-            if (window.cachedWeights && window.cachedWeights[party] && window.cachedWeights[party][senator.id] !== undefined) {
-                return window.cachedWeights[party][senator.id];
-            }
-            
-            // If no cached weights, calculate for all senators in this party
-            return calculateAllPartyWeights(party)[senator.id] || 0;
-        }
-
-        function calculateAllPartyWeights(party) {
-            const totalPartySeats = partySeats[party].senate;
-            if (totalPartySeats === 0) {
-                return {};
-            }
-            
-            const partySenators = senators[party];
-            if (partySenators.length === 0) {
-                return {};
-            }
-            
-            // Step 1: Calculate ideal weights for all senators
-            const idealWeights = {};
-            partySenators.forEach(senator => {
-                // Calculate base faction weight
-                let baseWeight = 0;
-                if (senator.faction_id) {
-                    const faction = factions[party].find(f => f.id === senator.faction_id);
-                    if (faction && faction.senate_count > 0) {
-                        const factionPlayers = partySenators.filter(s => s.faction_id === senator.faction_id);
-                        baseWeight = faction.senate_count / factionPlayers.length;
-                    }
-                }
-                
-                // Calculate leadership bonus
-                let leadershipBonus = 0;
-                switch(senator.role) {
-                    case 'party_leader':
-                        leadershipBonus = totalPartySeats * 0.25;
-                        break;
-                    case 'party_whip':
-                        leadershipBonus = totalPartySeats * 0.20;
-                        break;
-                    case 'caucus_chair':
-                        const chairFaction = factions[party].find(f => f.id === senator.faction_id);
-                        if (chairFaction) {
-                            const partyFactions = factions[party].filter(f => f.senate_count > 0);
-                            const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
-                            const factionRank = sortedFactions.findIndex(f => f.id === chairFaction.id);
-                            
-                            if (factionRank === 0) {
-                                leadershipBonus = totalPartySeats * 0.15;
-                            } else if (factionRank === 1) {
-                                leadershipBonus = totalPartySeats * 0.10;
-                            } else {
-                                leadershipBonus = totalPartySeats * 0.05;
-                            }
-                        } else {
-                            leadershipBonus = totalPartySeats * 0.05;
-                        }
-                        break;
-                    default:
-                        leadershipBonus = 0;
-                        break;
-                }
-                
-                idealWeights[senator.id] = baseWeight + leadershipBonus;
-            });
-            
-            // Step 2: Check if total exceeds party seat count
-            const totalIdealWeight = Object.values(idealWeights).reduce((sum, weight) => sum + weight, 0);
-            
-            // Step 3: Scale down if necessary and round to whole numbers
-            const finalWeights = {};
-            if (totalIdealWeight > totalPartySeats) {
-                // Scale down proportionally
-                const scaleFactor = totalPartySeats / totalIdealWeight;
-                partySenators.forEach(senator => {
-                    finalWeights[senator.id] = Math.max(1, Math.round(idealWeights[senator.id] * scaleFactor));
-                });
-                
-                // Adjust to ensure exact total (distribute any remaining seats)
-                let currentTotal = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
-                const difference = totalPartySeats - currentTotal;
-                
-                if (difference !== 0) {
-                    // Sort senators by their ideal weight (highest first) to give remaining seats to most important roles
-                    const sortedSenators = partySenators.sort((a, b) => idealWeights[b.id] - idealWeights[a.id]);
-                    
-                    if (difference > 0) {
-                        // Add remaining seats to highest weighted senators
-                        for (let i = 0; i < difference && i < sortedSenators.length; i++) {
-                            finalWeights[sortedSenators[i].id]++;
-                        }
-                    } else {
-                        // Remove excess seats from lowest weighted senators (but keep minimum of 1)
-                        for (let i = sortedSenators.length - 1; i >= 0 && currentTotal > totalPartySeats; i--) {
-                            if (finalWeights[sortedSenators[i].id] > 1) {
-                                finalWeights[sortedSenators[i].id]--;
-                                currentTotal--;
-                            }
-                        }
-                    }
-                }
+        
+        let leadershipBonus = 0;
+        switch(senator.role) {
+          case 'party_leader':
+            leadershipBonus = totalPartySeats * 0.25;
+            break;
+          case 'party_whip':
+            leadershipBonus = totalPartySeats * 0.20;
+            break;
+          case 'caucus_chair':
+            const chairFaction = factions[party].find(f => f.id === senator.faction_id);
+            if (chairFaction) {
+              const partyFactions = factions[party].filter(f => f.senate_count > 0);
+              const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
+              const factionRank = sortedFactions.findIndex(f => f.id === chairFaction.id);
+              
+              if (factionRank === 0) leadershipBonus = totalPartySeats * 0.15;
+              else if (factionRank === 1) leadershipBonus = totalPartySeats * 0.10;
+              else leadershipBonus = totalPartySeats * 0.05;
             } else {
-                // No scaling needed, just round
-                partySenators.forEach(senator => {
-                    finalWeights[senator.id] = Math.max(1, Math.round(idealWeights[senator.id]));
-                });
-                
-                // Still need to ensure we don't exceed total due to rounding
-                let currentTotal = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
-                if (currentTotal > totalPartySeats) {
-                    const excess = currentTotal - totalPartySeats;
-                    const sortedSenators = partySenators.sort((a, b) => idealWeights[a.id] - idealWeights[b.id]);
-                    
-                    for (let i = 0; i < excess && i < sortedSenators.length; i++) {
-                        if (finalWeights[sortedSenators[i].id] > 1) {
-                            finalWeights[sortedSenators[i].id]--;
-                        }
-                    }
-                }
+              leadershipBonus = totalPartySeats * 0.05;
             }
-            
-            // Cache the weights
-            if (!window.cachedWeights) {
-                window.cachedWeights = {};
+            break;
+          default:
+            leadershipBonus = 0;
+            break;
+        }
+        
+        idealWeights[senator.id] = baseWeight + leadershipBonus;
+      });
+      
+      const totalIdealWeight = Object.values(idealWeights).reduce((sum, weight) => sum + weight, 0);
+      const finalWeights = {};
+      
+      if (totalIdealWeight > totalPartySeats) {
+        const scaleFactor = totalPartySeats / totalIdealWeight;
+        partySenators.forEach(senator => {
+          finalWeights[senator.id] = Math.max(1, Math.round(idealWeights[senator.id] * scaleFactor));
+        });
+        
+        let currentTotal = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
+        const difference = totalPartySeats - currentTotal;
+        
+        if (difference !== 0) {
+          const sortedSenators = partySenators.sort((a, b) => idealWeights[b.id] - idealWeights[a.id]);
+          
+          if (difference > 0) {
+            for (let i = 0; i < difference && i < sortedSenators.length; i++) {
+              finalWeights[sortedSenators[i].id]++;
             }
-            window.cachedWeights[party] = finalWeights;
-            
-            return finalWeights;
+          } else {
+            for (let i = sortedSenators.length - 1; i >= 0 && currentTotal > totalPartySeats; i--) {
+              if (finalWeights[sortedSenators[i].id] > 1) {
+                finalWeights[sortedSenators[i].id]--;
+                currentTotal--;
+              }
+            }
+          }
         }
-
-        // Clear cached weights when data changes
-        function clearWeightCache() {
-            window.cachedWeights = {};
+      } else {
+        partySenators.forEach(senator => {
+          finalWeights[senator.id] = Math.max(1, Math.round(idealWeights[senator.id]));
+        });
+        
+        let currentTotal = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
+        if (currentTotal > totalPartySeats) {
+          const excess = currentTotal - totalPartySeats;
+          const sortedSenators = partySenators.sort((a, b) => idealWeights[a.id] - idealWeights[b.id]);
+          
+          for (let i = 0; i < excess && i < sortedSenators.length; i++) {
+            if (finalWeights[sortedSenators[i].id] > 1) {
+              finalWeights[sortedSenators[i].id]--;
+            }
+          }
         }
+      }
+      
+      if (!window.cachedWeights) window.cachedWeights = {};
+      window.cachedWeights[party] = finalWeights;
+      
+      return finalWeights;
+    }
 
-        function getSenatorDisplayWeight(senator, party) {
+    function getSenatorDisplayWeight(senator, party) {
+      return calculateSenatorVoteWeight(senator, party);
+    }
+
+    function getRoleDisplayName(role) {
+      switch(role) {
+        case 'party_leader': return 'Party Leader';
+        case 'party_whip': return 'Party Whip';
+        case 'caucus_chair': return 'Caucus Chair';
+        case 'senator':
+        default: return 'Senator';
+      }
+    }
+
+    // ===== RENDERING & VOTING LOGIC =====
+    function renderAll() {
+      renderSenators();
+      renderHouseFactions();
+      updateSeatCounts();
+    }
+
+    function renderSenators() {
+      ['republican', 'democrat'].forEach(party => {
+        const container = document.getElementById(party === 'republican' ? 'republicanSenators' : 'democratSenators');
+        
+        const sortedSenators = [...senators[party]].sort((a, b) => {
+          const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'senator': 3 };
+          return roleOrder[a.role] - roleOrder[b.role];
+        });
+        
+        container.innerHTML = sortedSenators.map(senator => {
+          const faction = factions[party].find(f => f.id === senator.faction_id);
+          const factionName = faction ? faction.name : 'No Faction';
+          const roleDisplay = getRoleDisplayName(senator.role);
+          const voteWeight = getSenatorDisplayWeight(senator, party);
+          
+          return `
+            <div class="faction-item">
+              <div class="faction-info">
+                <div class="faction-name">${senator.name}</div>
+                <div class="faction-count">
+                  ${roleDisplay} | ${factionName} | Weight: ${voteWeight} votes
+                </div>
+              </div>
+              <div class="vote-buttons">
+                <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
+                        onclick="vote('${senator.id}', 'aye', true)">AYE</button>
+                <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
+                        onclick="vote('${senator.id}', 'nay', true)">NAY</button>
+                <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
+                        onclick="vote('${senator.id}', 'pres', true)">PRES</button>
+              </div>
+              <button class="delete-btn" onclick="removeSenator('${party}', '${senator.id}')">×</button>
+            </div>
+          `;
+        }).join('');
+      });
+    }
+
+    function renderHouseFactions() {
+      ['republican', 'democrat'].forEach(party => {
+        const container = document.getElementById(party === 'republican' ? 'republicanHouseFactions' : 'democratHouseFactions');
+        
+        container.innerHTML = factions[party].filter(f => f.house_count > 0).map(faction => `
+          <div class="faction-item">
+            <div class="faction-info">
+              <div class="faction-name">${faction.name}</div>
+              <div class="faction-count">${faction.house_count} House members</div>
+            </div>
+            <div class="vote-buttons">
+              <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
+                      onclick="vote('${faction.id}', 'aye', false)">AYE</button>
+              <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
+                      onclick="vote('${faction.id}', 'nay', false)">NAY</button>
+              <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
+                      onclick="vote('${faction.id}', 'pres', false)">PRES</button>
+            </div>
+            <button class="delete-btn" onclick="removeFaction('${party}', '${faction.id}')">×</button>
+          </div>
+        `).join('');
+      });
+    }
+
+    function updateSeatCounts() {
+      const repSenateCurrent = senators.republican.length;
+      const demSenateCurrent = senators.democrat.length;
+      const repHouseCurrent = factions.republican.reduce((sum, f) => sum + (f.house_count || 0), 0);
+      const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + (f.house_count || 0), 0);
+
+      const repWeights = calculateAllPartyWeights('republican');
+      const demWeights = calculateAllPartyWeights('democrat');
+      const repTotalWeight = Object.values(repWeights).reduce((sum, weight) => sum + weight, 0);
+      const demTotalWeight = Object.values(demWeights).reduce((sum, weight) => sum + weight, 0);
+
+      document.getElementById('repSenateCurrent').textContent = repSenateCurrent;
+      document.getElementById('demSenateCurrent').textContent = demSenateCurrent;
+      document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
+      document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
+      
+      document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
+      document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
+      document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
+      document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
+      
+      document.getElementById('repSenateWeight').textContent = repTotalWeight;
+      document.getElementById('demSenateWeight').textContent = demTotalWeight;
+    }
+
+    function vote(id, voteType, isSenator = false) {
+      votes[id] = voteType;
+      renderAll();
+      updateResults();
+      autoSave();
+      
+      console.log(`🗳️ Vote recorded: ${isSenator ? 'Senator' : 'Faction'} ${id} voted ${voteType}`);
+    }
+
+    function calculateResults() {
+      const results = {
+        republican: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } },
+        democrat: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } }
+      };
+
+      ['republican', 'democrat'].forEach(party => {
+        senators[party].forEach(senator => {
+          const vote = votes[senator.id];
+          if (vote) {
             const weight = calculateSenatorVoteWeight(senator, party);
-            return weight; // Already rounded to whole number in calculation
-        }
-
-        function getRoleDisplayName(role) {
-            switch(role) {
-                case 'party_leader': return 'Party Leader';
-                case 'party_whip': return 'Party Whip';
-                case 'caucus_chair': return 'Caucus Chair';
-                case 'senator':
-                default: return 'Senator';
-            }
-        }
-
-        // ===== VOTING =====
-        function vote(id, voteType, isSenator = false) {
-            votes[id] = voteType;
-            renderAll();
-            updateResults();
-            autoSave();
-            
-            console.log(`🗳️ Vote recorded: ${isSenator ? 'Senator' : 'Faction'} ${id} voted ${voteType}`);
-        }
-
-        // ===== RENDERING =====
-        function renderAll() {
-            renderSenators();
-            renderHouseFactions();
-            updateSeatCounts();
-        }
-
-        function renderSenators() {
-            ['republican', 'democrat'].forEach(party => {
-                const container = document.getElementById(party === 'republican' ? 'republicanSenators' : 'democratSenators');
-                
-                const sortedSenators = [...senators[party]].sort((a, b) => {
-                    const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'senator': 3 };
-                    return roleOrder[a.role] - roleOrder[b.role];
-                });
-                
-                container.innerHTML = sortedSenators.map(senator => {
-                    const faction = factions[party].find(f => f.id === senator.faction_id);
-                    const factionName = faction ? faction.name : 'No Faction';
-                    const roleDisplay = getRoleDisplayName(senator.role);
-                    const voteWeight = getSenatorDisplayWeight(senator, party);
-                    
-                    return `
-                        <div class="faction-item">
-                            <div class="faction-info">
-                                <div class="faction-name">${senator.name}</div>
-                                <div class="faction-count">
-                                    ${roleDisplay} | ${factionName} | Weight: ${voteWeight} votes
-                                </div>
-                            </div>
-                            <div class="vote-buttons">
-                                <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
-                                        onclick="vote(${senator.id}, 'aye', true)">AYE</button>
-                                <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
-                                        onclick="vote(${senator.id}, 'nay', true)">NAY</button>
-                                <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
-                                        onclick="vote(${senator.id}, 'pres', true)">PRES</button>
-                            </div>
-                            <button class="delete-btn" onclick="removeSenator('${party}', ${senator.id})">×</button>
-                        </div>
-                    `;
-                }).join('');
-            });
-        }
-
-        function renderHouseFactions() {
-            ['republican', 'democrat'].forEach(party => {
-                const container = document.getElementById(party === 'republican' ? 'republicanHouseFactions' : 'democratHouseFactions');
-                
-                container.innerHTML = factions[party].filter(f => f.house_count > 0).map(faction => `
-                    <div class="faction-item">
-                        <div class="faction-info">
-                            <div class="faction-name">${faction.name}</div>
-                            <div class="faction-count">${faction.house_count} House members</div>
-                        </div>
-                        <div class="vote-buttons">
-                            <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
-                                    onclick="vote('${faction.id}', 'aye', false)">AYE</button>
-                            <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
-                                    onclick="vote('${faction.id}', 'nay', false)">NAY</button>
-                            <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
-                                    onclick="vote('${faction.id}', 'pres', false)">PRES</button>
-                        </div>
-                        <button class="delete-btn" onclick="removeFaction('${party}', '${faction.id}')">×</button>
-                    </div>
-                `).join('');
-            });
-        }
-
-        function updateSeatCounts() {
-            const repSenateCurrent = senators.republican.length;
-            const demSenateCurrent = senators.democrat.length;
-            const repHouseCurrent = factions.republican.reduce((sum, f) => sum + (f.house_count || 0), 0);
-            const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + (f.house_count || 0), 0);
-
-            // Calculate total weights for each party
-            const repWeights = calculateAllPartyWeights('republican');
-            const demWeights = calculateAllPartyWeights('democrat');
-            const repTotalWeight = Object.values(repWeights).reduce((sum, weight) => sum + weight, 0);
-            const demTotalWeight = Object.values(demWeights).reduce((sum, weight) => sum + weight, 0);
-
-            document.getElementById('repSenateCurrent').textContent = repSenateCurrent;
-            document.getElementById('demSenateCurrent').textContent = demSenateCurrent;
-            document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
-            document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
-            
-            document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
-            document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
-            document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
-            document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
-            
-            // Update weight displays
-            document.getElementById('repSenateWeight').textContent = repTotalWeight;
-            document.getElementById('demSenateWeight').textContent = demTotalWeight;
-        }
-
-        // ===== CALCULATIONS =====
-        function calculateResults() {
-            const results = {
-                republican: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } },
-                democrat: { senate: { aye: 0, nay: 0, pres: 0 }, house: { aye: 0, nay: 0, pres: 0 } }
-            };
-
-            // Calculate Senate results using WEIGHTED votes from senators
-            ['republican', 'democrat'].forEach(party => {
-                senators[party].forEach(senator => {
-                    const vote = votes[senator.id];
-                    if (vote) {
-                        const weight = calculateSenatorVoteWeight(senator, party);
-                        results[party].senate[vote] += weight;
-                    }
-                });
-            });
-
-            // Calculate House results from factions
-            ['republican', 'democrat'].forEach(party => {
-                factions[party].forEach(faction => {
-                    const vote = votes[faction.id];
-                    if (vote && faction.house_count > 0) {
-                        results[party].house[vote] += faction.house_count;
-                    }
-                });
-            });
-
-            // Round Senate results (though they should already be whole numbers)
-            ['republican', 'democrat'].forEach(party => {
-                ['aye', 'nay', 'pres'].forEach(voteType => {
-                    results[party].senate[voteType] = Math.round(results[party].senate[voteType]);
-                });
-            });
-
-            return results;
-        }
-
-        function updateResults() {
-            const results = calculateResults();
-            
-            // Update Senate results
-            document.getElementById('repSenateAye').textContent = results.republican.senate.aye;
-            document.getElementById('repSenateNay').textContent = results.republican.senate.nay;
-            document.getElementById('repSenatePres').textContent = results.republican.senate.pres;
-            
-            document.getElementById('demSenateAye').textContent = results.democrat.senate.aye;
-            document.getElementById('demSenateNay').textContent = results.democrat.senate.nay;
-            document.getElementById('demSenatePres').textContent = results.democrat.senate.pres;
-            
-            document.getElementById('totalSenateAye').textContent = 
-                results.republican.senate.aye + results.democrat.senate.aye;
-            document.getElementById('totalSenateNay').textContent = 
-                results.republican.senate.nay + results.democrat.senate.nay;
-            document.getElementById('totalSenatePres').textContent = 
-                results.republican.senate.pres + results.democrat.senate.pres;
-
-            // Update House results
-            document.getElementById('repHouseAye').textContent = results.republican.house.aye;
-            document.getElementById('repHouseNay').textContent = results.republican.house.nay;
-            document.getElementById('repHousePres').textContent = results.republican.house.pres;
-            
-            document.getElementById('demHouseAye').textContent = results.democrat.house.aye;
-            document.getElementById('demHouseNay').textContent = results.democrat.house.nay;
-            document.getElementById('demHousePres').textContent = results.democrat.house.pres;
-            
-            document.getElementById('totalHouseAye').textContent = 
-                results.republican.house.aye + results.democrat.house.aye;
-            document.getElementById('totalHouseNay').textContent = 
-                results.republican.house.nay + results.democrat.house.nay;
-            document.getElementById('totalHousePres').textContent = 
-                results.republican.house.pres + results.democrat.house.pres;
-        }
-
-        // ===== UTILITY FUNCTIONS =====
-        function clearAllVotes() {
-            if (!confirm('Are you sure you want to clear all votes?')) return;
-            
-            votes = {};
-            renderAll();
-            updateResults();
-            autoSave();
-        }
-
-        function resetToDefaults() {
-            if (!confirm('Reset to default data? This will clear all your current data.')) return;
-            
-            initializeDefaultData();
-            clearWeightCache();
-            updatePartySeatsDisplay();
-            updateFactionSelectors();
-            renderAll();
-            updateResults();
-            autoSave();
-            console.log('🔄 Reset to default data');
-        }
-
-        function exportResults() {
-            const results = calculateResults();
-            const exportData = {
-                session_id: currentSessionId,
-                timestamp: new Date().toISOString(),
-                party_seats: partySeats,
-                factions: factions,
-                senators: senators,
-                votes: votes,
-                results: results
-            };
-            
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            const sessionName = availableSessions.find(s => s.id === currentSessionId)?.name || currentSessionId;
-            a.download = `voting_results_${sessionName}_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // ===== INITIALIZATION =====
-        async function initializeApp() {
-            console.log('🚀 App starting - waiting for Google API...');
-            
-            // Set initial status
-            document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load...';
-            updateSyncStatus('offline');
-            
-            // The Google API will call startMyApp() or startMyAppOffline() when ready
-            // This function is now just for fallback timing in case Google API never loads
-            setTimeout(() => {
-                if (!syncEnabled && !window.gapi) {
-                    console.log('⏰ Google API timeout - starting offline mode');
-                    startMyAppOffline();
-                }
-            }, 20000); // 20 second fallback timeout
-        }
-
-        // ===== EVENT LISTENERS =====
-        window.addEventListener('online', () => {
-            isOnline = true;
-            console.log('📶 Back online');
-            updateSyncStatus('local');
+            results[party].senate[vote] += weight;
+          }
         });
+      });
 
-        window.addEventListener('offline', () => {
-            isOnline = false;
-            console.log('📴 Gone offline');
-            updateSyncStatus('offline');
+      ['republican', 'democrat'].forEach(party => {
+        factions[party].forEach(faction => {
+          const vote = votes[faction.id];
+          if (vote && faction.house_count > 0) {
+            results[party].house[vote] += faction.house_count;
+          }
         });
+      });
 
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initializeApp);
+      ['republican', 'democrat'].forEach(party => {
+        ['aye', 'nay', 'pres'].forEach(voteType => {
+          results[party].senate[voteType] = Math.round(results[party].senate[voteType]);
+        });
+      });
 
-        // Auto-save every 60 seconds for Google Sheets (longer to respect rate limits)
-        setInterval(() => {
-            if (syncEnabled) {
-                autoSave();
-            } else {
-                saveToLocalStorage();
-            }
-        }, 60000);
-    </script>
-</body>
-</html>
-    </script>
+      return results;
+    }
+
+    function updateResults() {
+      const results = calculateResults();
+      
+      document.getElementById('repSenateAye').textContent = results.republican.senate.aye;
+      document.getElementById('repSenateNay').textContent = results.republican.senate.nay;
+      document.getElementById('repSenatePres').textContent = results.republican.senate.pres;
+      
+      document.getElementById('demSenateAye').textContent = results.democrat.senate.aye;
+      document.getElementById('demSenateNay').textContent = results.democrat.senate.nay;
+      document.getElementById('demSenatePres').textContent = results.democrat.senate.pres;
+      
+      document.getElementById('totalSenateAye').textContent = 
+        results.republican.senate.aye + results.democrat.senate.aye;
+      document.getElementById('totalSenateNay').textContent = 
+        results.republican.senate.nay + results.democrat.senate.nay;
+      document.getElementById('totalSenatePres').textContent = 
+        results.republican.senate.pres + results.democrat.senate.pres;
+
+      document.getElementById('repHouseAye').textContent = results.republican.house.aye;
+      document.getElementById('repHouseNay').textContent = results.republican.house.nay;
+      document.getElementById('repHousePres').textContent = results.republican.house.pres;
+      
+      document.getElementById('demHouseAye').textContent = results.democrat.house.aye;
+      document.getElementById('demHouseNay').textContent = results.democrat.house.nay;
+      document.getElementById('demHousePres').textContent = results.democrat.house.pres;
+      
+      document.getElementById('totalHouseAye').textContent = 
+        results.republican.house.aye + results.democrat.house.aye;
+      document.getElementById('totalHouseNay').textContent = 
+        results.republican.house.nay + results.democrat.house.nay;
+      document.getElementById('totalHousePres').textContent = 
+        results.republican.house.pres + results.democrat.house.pres;
+    }
+
+    // ===== SESSION UI HELPERS =====
+    async function switchSession() {
+      const newSessionId = document.getElementById('sessionSelect').value;
+      
+      if (newSessionId === currentSessionId) return;
+      
+      if (syncEnabled) {
+        await saveSessionToSheets();
+      } else {
+        saveToLocalStorage();
+      }
+      
+      currentSessionId = newSessionId;
+      
+      if (syncEnabled) {
+        await loadSessionFromSheets(currentSessionId);
+      } else {
+        await loadLocalData();
+      }
+      
+      console.log(`🔄 Switched to session: ${currentSessionId}`);
+    }
+
+    async function createNewSession() {
+      const name = prompt('Enter new session name:');
+      if (!name || name.trim() === '') return;
+      
+      const sessionName = name.trim();
+      
+      try {
+        if (syncEnabled) {
+          await createSession(sessionName);
+          await loadSessionFromSheets(currentSessionId);
+        } else {
+          await createLocalSession(sessionName);
+        }
+        
+        updateSessionSelector();
+        document.getElementById('sessionSelect').value = currentSessionId;
+        renderAll();
+        updateResults();
+        
+      } catch (error) {
+        alert('Error creating session: ' + error.message);
+      }
+    }
+
+    async function createLocalSession(sessionName) {
+      const sessionId = `local_${Date.now()}`;
+      const newSession = {
+        id: sessionId,
+        name: sessionName,
+        created_at: new Date().toISOString()
+      };
+      
+      availableSessions.push(newSession);
+      saveLocalSessions();
+      
+      currentSessionId = sessionId;
+      initializeDefaultData();
+      saveToLocalStorage();
+      
+      return sessionId;
+    }
+
+    function updateSessionSelector() {
+      const select = document.getElementById('sessionSelect');
+      select.innerHTML = '';
+      
+      availableSessions.forEach(session => {
+        const option = document.createElement('option');
+        option.value = session.id;
+        option.textContent = session.name;
+        select.appendChild(option);
+      });
+      
+      select.value = currentSessionId;
+    }
+
+    // ===== PARTY SEATS UI =====
+    function updatePartySeats() {
+      partySeats = {
+        republican: {
+          senate: parseInt(document.getElementById('repSenateSeats').value) || 0,
+          house: parseInt(document.getElementById('repHouseSeats').value) || 0
+        },
+        democrat: {
+          senate: parseInt(document.getElementById('demSenateSeats').value) || 0,
+          house: parseInt(document.getElementById('demHouseSeats').value) || 0
+        }
+      };
+      
+      clearWeightCache();
+      updatePartySeatsDisplay();
+      updateSeatCounts();
+      autoSave();
+      updateResults();
+    }
+
+    function updatePartySeatsDisplay() {
+      document.getElementById('repSenateSeats').value = partySeats.republican.senate;
+      document.getElementById('repHouseSeats').value = partySeats.republican.house;
+      document.getElementById('demSenateSeats').value = partySeats.democrat.senate;
+      document.getElementById('demHouseSeats').value = partySeats.democrat.house;
+      
+      document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
+      document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
+      document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
+      document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
+    }
+
+    // ===== FACTION UI =====
+    function addFaction() {
+      const name = document.getElementById('factionName').value.trim();
+      const party = document.getElementById('factionParty').value;
+      const senateCount = parseInt(document.getElementById('factionSenateCount').value) || 0;
+      const houseCount = parseInt(document.getElementById('factionHouseCount').value) || 0;
+
+      if (!name) {
+        alert('Please enter a faction name');
+        return;
+      }
+
+      const newFaction = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
+        name: name,
+        party: party,
+        senate_count: senateCount,
+        house_count: houseCount
+      };
+      
+      factions[party].push(newFaction);
+      
+      document.getElementById('factionName').value = '';
+      document.getElementById('factionSenateCount').value = '0';
+      document.getElementById('factionHouseCount').value = '0';
+      
+      clearWeightCache();
+      updateFactionSelectors();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function showAddFaction(party) {
+      document.getElementById('factionParty').value = party;
+      document.getElementById('factionName').focus();
+    }
+
+    function removeFaction(party, id) {
+      factions[party] = factions[party].filter(f => f.id !== id);
+      delete votes[id];
+      clearWeightCache();
+      updateFactionSelectors();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function updateFactionSelectors() {
+      const senatorFactionSelect = document.getElementById('senatorFaction');
+      senatorFactionSelect.innerHTML = '<option value="">Select faction...</option>';
+      
+      ['republican', 'democrat'].forEach(party => {
+        factions[party].forEach(faction => {
+          const option = document.createElement('option');
+          option.value = faction.id;
+          option.textContent = `${faction.name} (${party.charAt(0).toUpperCase() + party.slice(1)})`;
+          senatorFactionSelect.appendChild(option);
+        });
+      });
+    }
+
+    // ===== SENATOR UI =====
+    function addSenator() {
+      const name = document.getElementById('senatorName').value.trim();
+      const party = document.getElementById('senatorParty').value;
+      const role = document.getElementById('senatorRole').value;
+      const factionId = document.getElementById('senatorFaction').value;
+
+      if (!name) {
+        alert('Please enter a senator name');
+        return;
+      }
+
+      if (role === 'party_leader' || role === 'party_whip') {
+        const existingRoles = senators[party].filter(s => s.role === role);
+        if (existingRoles.length > 0) {
+          alert(`There can only be one ${role.replace('_', ' ')} per party. Current ${role.replace('_', ' ')}: ${existingRoles[0].name}`);
+          return;
+        }
+      }
+
+      const newSenator = {
+        id: Date.now(),
+        name: name,
+        party: party,
+        role: role,
+        faction_id: factionId ? factionId : null
+      };
+      
+      senators[party].push(newSenator);
+      document.getElementById('senatorName').value = '';
+      
+      clearWeightCache();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function removeSenator(party, id) {
+      senators[party] = senators[party].filter(s => s.id !== id);
+      delete votes[id];
+      clearWeightCache();
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    // ===== UTILITY =====
+    function clearWeightCache() { 
+      window.cachedWeights = {}; 
+    }
+
+    function clearAllVotes() {
+      if (!confirm('Are you sure you want to clear all votes?')) return;
+      
+      votes = {};
+      renderAll();
+      updateResults();
+      autoSave();
+    }
+
+    function resetToDefaults() {
+      if (!confirm('Reset to default data? This will clear all your current data.')) return;
+      
+      initializeDefaultData();
+      clearWeightCache();
+      updatePartySeatsDisplay();
+      updateFactionSelectors();
+      renderAll();
+      updateResults();
+      autoSave();
+      console.log('🔄 Reset to default data');
+    }
+
+    function exportResults() {
+      const results = calculateResults();
+      const exportData = {
+        session_id: currentSessionId,
+        timestamp: new Date().toISOString(),
+        party_seats: partySeats,
+        factions: factions,
+        senators: senators,
+        votes: votes,
+        results: results
+      };
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      const sessionName = availableSessions.find(s => s.id === currentSessionId)?.name || currentSessionId;
+      a.download = `voting_results_${sessionName}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function updateSyncStatus(status) {
+      const statusEl = document.getElementById('syncStatus');
+      const syncBtn = document.getElementById('syncBtn');
+      const detailsEl = document.getElementById('connectionDetails');
+      
+      if (statusEl) {
+        statusEl.className = 'status-indicator status-' + status;
+      }
+      
+      switch(status) {
+        case 'local':
+          if (statusEl) statusEl.textContent = '📁 Local + File Backup';
+          if (syncBtn) syncBtn.disabled = false;
+          break;
+        case 'syncing':
+          if (statusEl) statusEl.textContent = '🔄 Syncing...';
+          if (syncBtn) syncBtn.disabled = true;
+          break;
+        case 'synced':
+          if (statusEl) statusEl.textContent = '📊 Google Sheets';
+          if (syncBtn) syncBtn.disabled = false;
+          break;
+        case 'offline':
+          if (statusEl) statusEl.textContent = '📁 Local + File Backup';
+          if (syncBtn) syncBtn.disabled = false;
+          break;
+      }
+    }
+
+    async function syncWithDatabase() {
+      if (!syncEnabled) {
+        saveToLocalStorage();
+        updateSyncStatus('local');
+        
+        const btn = document.getElementById('syncBtn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Saved!';
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
+          if (shouldExport) {
+            exportAllData();
+          }
+        }, 2000);
+        return;
+      }
+      
+      console.log('🔄 Starting database sync...');
+      
+      try {
+        await saveSessionToSheets();
+        
+        const btn = document.getElementById('syncBtn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Synced!';
+        setTimeout(() => {
+          btn.textContent = originalText;
+        }, 2000);
+        
+      } catch (error) {
+        console.error('❌ Sync failed:', error);
+        alert('Sync failed: ' + error.message);
+      }
+    }
+
+    async function autoSave() {
+      try {
+        if (syncEnabled) {
+          clearTimeout(window.autoSaveTimeout);
+          window.autoSaveTimeout = setTimeout(async () => {
+            await saveSessionToSheets();
+          }, 2000);
+        } else {
+          saveToLocalStorage();
+        }
+      } catch (error) {
+        console.error('Auto-save error:', error);
+      }
+    }
+
+    // ===== APP INITIALIZATION =====
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🚀 App starting – waiting for Google API…');
+      document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load…';
+      updateSyncStatus('offline');
+      // fallback if Google never loads
+      setTimeout(()=>{
+        if (!syncEnabled && !window.gapi) {
+          console.log('⏰ Google API timeout – starting offline mode');
+          startMyAppOffline();
+        }
+      }, 20000);
+    });
+
+    // ===== ONLINE/OFFLINE EVENTS =====
+    window.addEventListener('online',  ()=>{ isOnline=true;  console.log('📶 Back online'); updateSyncStatus('local'); });
+    window.addEventListener('offline', ()=>{ isOnline=false; console.log('📴 Offline');      updateSyncStatus('offline'); });
+
+    // ===== AUTO-SAVE =====
+    setInterval(()=>{
+      if (syncEnabled) autoSave();
+      else           saveToLocalStorage();
+    }, 60000);
+  </script>
 </body>
 </html>
