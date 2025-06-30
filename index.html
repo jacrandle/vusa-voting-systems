@@ -1764,7 +1764,34 @@ document
         results.republican.house.nay + results.democrat.house.nay;
       document.getElementById('totalHousePres').textContent = 
         results.republican.house.pres + results.democrat.house.pres;
-    }
+    }  // ← end of the main updateResults
+
+// ─── HASTERt STATUS ────────────────────────────────────────────
+function updateHastertStatus() {
+  const majority = partySeats.republican.house > partySeats.democrat.house
+    ? 'republican'
+    : 'democrat';
+  const results = calculateResults();
+  const ayeCount = results[majority].house.aye;
+  const needed   = Math.floor(partySeats[majority].house/2) + 1;
+  const el       = document.getElementById('hastertStatus');
+  if (!el) return;
+  const cap = majority[0].toUpperCase() + majority.slice(1);
+  if (ayeCount >= needed) {
+    el.textContent = `Hastert Rule met for ${cap}: ${ayeCount} ≥ ${needed} ✅`;
+    el.style.color = '#2e7d32';
+  } else {
+    el.textContent = `Hastert Rule NOT met for ${cap}: ${ayeCount} / ${needed} ❌`;
+    el.style.color = '#c00';
+  }
+}
+
+// wrap the original so it always updates our status
+const __origUpdateResults = updateResults;
+updateResults = function() {
+  __origUpdateResults();
+  updateHastertStatus();
+};
 
     // ===== SESSION UI HELPERS =====
     async function switchSession() {
