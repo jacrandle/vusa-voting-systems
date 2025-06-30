@@ -196,37 +196,6 @@
     let syncEnabled = false;
     let isOnline = navigator.onLine;
   </script>
-  <script>
-// ─── HASTERT RULE ENFORCEMENT ────────────────────────────────────
-// Returns true if that party has at least a majority of its own members
-// in favor, per the Hastert Rule.
-function canScheduleUnderHastertRule(party, ayeCount) {
-  // how many seats that party holds in the House
-  const totalSeats = partySeats[party].house;
-  // you need a majority *of the party* to even bring it to the floor
-  const needed = Math.floor(totalSeats / 2) + 1;
-  return ayeCount >= needed;
-}
-
-// Example usage: hook this into your “Schedule Vote” button handler
-
-document
-  .getElementById('scheduleVoteBtn')
-  .addEventListener('click', () => {
-    // say you’ve been tracking pledges in votesByParty:
-    const ayeCount = votesByParty['republican'] || 0;
-    if (!canScheduleUnderHastertRule('republican', ayeCount)) {
-      alert(
-        `Cannot schedule under Hastert Rule:\n` +
-        `Republicans need ${Math.floor(partySeats.republican.house/2)+1} ` +
-        `intra-party “AYE” pledges, but only ${ayeCount} so far.`
-      );
-      return;
-    }
-    // …otherwise go ahead and call your existing scheduleFloorVote()…
-    scheduleFloorVote();
-  });
-</script>
 
   <!-- Load Google Identity Services -->
   <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
@@ -729,6 +698,120 @@ document
     .sync-btn {
       background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
     }
+
+    .faction-group {
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(255,255,255,0.5);
+    }
+
+    .faction-group-header {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .faction-count-badge {
+      font-size: 12px;
+      background: #f8f9fa;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .unassigned-group {
+      margin-bottom: 20px;
+      border: 1px dashed #ccc;
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(255,255,255,0.3);
+    }
+
+    .unassigned-group-header {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hastert-section {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border: 2px solid #dee2e6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .hastert-title {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 15px;
+      text-align: center;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .hastert-content {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .hastert-satisfied {
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      color: #155724;
+      border: 2px solid #28a745;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+    }
+
+    .hastert-not-met {
+      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+      color: #721c24;
+      border: 2px solid #dc3545;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+
+    .bill-status-passing {
+      background: linear-gradient(135deg, #cce5ff 0%, #b3d9ff 100%);
+      color: #0066cc;
+      border: 2px solid #007bff;
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0, 123, 255, 0.2);
+    }
+
+    .bill-status-failing {
+      background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+      color: #cc0000;
+      border: 2px solid #dc3545;
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
+    }
   </style>
 </head>
 
@@ -862,12 +945,13 @@ document
             </select>
           </div>
           <div class="control-group">
-            <label for="senatorRole">Role</label>
-            <select id="senatorRole">
+            <label for="senatorRole">Roles (hold Ctrl/Cmd for multiple)</label>
+            <select id="senatorRole" multiple style="height: 80px;">
               <option value="senator">Senator</option>
               <option value="party_leader">Party Leader</option>
               <option value="party_whip">Party Whip</option>
               <option value="caucus_chair">Caucus Chair</option>
+              <option value="committee_chair">Committee Chair</option>
             </select>
           </div>
         </div>
@@ -913,7 +997,8 @@ document
         <div class="chamber-header">
           <div class="chamber-title">🏢 House (Faction Votes)</div>
           <div style="font-size: 14px; color: #666;">
-            ⚠️ House votes by faction - each faction vote = all faction members
+            ⚠️ House votes by faction - each faction vote = all faction members<br>
+            📏 <strong>Hastert Rule:</strong> Majority party must provide majority of their own votes for bill to proceed
           </div>
         </div>
 
@@ -1030,11 +1115,13 @@ document
               </tr>
             </tbody>
           </table>
-            <!-- Hastert Rule status -->
-  <div id="hastertStatus" 
-       style="margin-top:8px;font-weight:600;font-size:0.95em;color:#333">
-    <!-- JS will fill this in -->
-  </div>
+          
+          <div class="hastert-section">
+            <h4 class="hastert-title">📏 Hastert Rule Analysis</h4>
+            <div id="hastertRuleStatus" class="hastert-content">
+              <div style="color: #666; font-style: italic; text-align: center;">No votes cast yet</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1188,11 +1275,11 @@ document
         { session_id:id, id:`s_${Date.now()}_1`, name:'Mitch McConnell (R-KY)', party:'republican', role:'party_leader', faction_id:facs[2].id, vote_weight:12 },
         { session_id:id, id:`s_${Date.now()}_2`, name:'John Thune (R-SD)', party:'republican', role:'party_whip', faction_id:facs[2].id, vote_weight:10 },
         { session_id:id, id:`s_${Date.now()}_3`, name:'Ted Cruz (R-TX)', party:'republican', role:'caucus_chair', faction_id:facs[0].id, vote_weight:7 },
-        { session_id:id, id:`s_${Date.now()}_4`, name:'Susan Collins (R-ME)', party:'republican', role:'caucus_chair', faction_id:facs[1].id, vote_weight:5 },
+        { session_id:id, id:`s_${Date.now()}_4`, name:'Susan Collins (R-ME)', party:'republican', role:'caucus_chair,committee_chair', faction_id:facs[1].id, vote_weight:5 },
         { session_id:id, id:`s_${Date.now()}_5`, name:'Chuck Schumer (D-NY)', party:'democrat', role:'party_leader', faction_id:facs[5].id, vote_weight:13 },
         { session_id:id, id:`s_${Date.now()}_6`, name:'Dick Durbin (D-IL)', party:'democrat', role:'party_whip', faction_id:facs[5].id, vote_weight:10 },
         { session_id:id, id:`s_${Date.now()}_7`, name:'Bernie Sanders (I-VT)', party:'democrat', role:'caucus_chair', faction_id:facs[3].id, vote_weight:8 },
-        { session_id:id, id:`s_${Date.now()}_8`, name:'Joe Manchin (D-WV)', party:'democrat', role:'caucus_chair', faction_id:facs[4].id, vote_weight:5 }
+        { session_id:id, id:`s_${Date.now()}_8`, name:'Joe Manchin (D-WV)', party:'democrat', role:'caucus_chair,committee_chair', faction_id:facs[4].id, vote_weight:5 }
       ];
       for (let s of sens) await appendToSheet('senators', s);
     }
@@ -1226,9 +1313,10 @@ document
 
       senators = { republican:[], democrat:[] };
       allSens.filter(s=>s.session_id===id).forEach(s=>{
+        const roles = s.role ? s.role.split(',').map(r => r.trim()) : ['senator'];
         senators[s.party].push({
           id:s.id,name:s.name,party:s.party,
-          role:s.role,faction_id:s.faction_id
+          roles: roles,faction_id:s.faction_id
         });
       });
 
@@ -1282,13 +1370,14 @@ document
       Object.values(senators).flat().forEach(senator => {
         const weights = calculateAllPartyWeights(senator.party);
         const voteWeight = weights[senator.id] || 1;
+        const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
         
         filteredSens.push({
           session_id: currentSessionId,
           id: senator.id,
           name: senator.name,
           party: senator.party,
-          role: senator.role,
+          role: roles.join(','), // Convert array to comma-separated string
           faction_id: senator.faction_id || '',
           vote_weight: voteWeight
         });
@@ -1377,16 +1466,16 @@ document
       
       senators = {
         republican: [
-          { id: Date.now() + 11, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: Date.now() + 3 },
-          { id: Date.now() + 12, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: Date.now() + 3 },
-          { id: Date.now() + 13, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 1 },
-          { id: Date.now() + 14, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 2 }
+          { id: Date.now() + 11, name: 'Mitch McConnell (R-KY)', party: 'republican', roles: ['party_leader'], faction_id: Date.now() + 3 },
+          { id: Date.now() + 12, name: 'John Thune (R-SD)', party: 'republican', roles: ['party_whip'], faction_id: Date.now() + 3 },
+          { id: Date.now() + 13, name: 'Ted Cruz (R-TX)', party: 'republican', roles: ['caucus_chair'], faction_id: Date.now() + 1 },
+          { id: Date.now() + 14, name: 'Susan Collins (R-ME)', party: 'republican', roles: ['caucus_chair', 'committee_chair'], faction_id: Date.now() + 2 }
         ],
         democrat: [
-          { id: Date.now() + 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: Date.now() + 6 },
-          { id: Date.now() + 22, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: Date.now() + 6 },
-          { id: Date.now() + 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 4 },
-          { id: Date.now() + 24, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 5 }
+          { id: Date.now() + 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', roles: ['party_leader'], faction_id: Date.now() + 6 },
+          { id: Date.now() + 22, name: 'Dick Durbin (D-IL)', party: 'democrat', roles: ['party_whip'], faction_id: Date.now() + 6 },
+          { id: Date.now() + 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', roles: ['caucus_chair'], faction_id: Date.now() + 4 },
+          { id: Date.now() + 24, name: 'Joe Manchin (D-WV)', party: 'democrat', roles: ['caucus_chair', 'committee_chair'], faction_id: Date.now() + 5 }
         ]
       };
       
@@ -1499,34 +1588,41 @@ document
           }
         }
         
-        let leadershipBonus = 0;
-        switch(senator.role) {
-          case 'party_leader':
-            leadershipBonus = totalPartySeats * 0.25;
-            break;
-          case 'party_whip':
-            leadershipBonus = totalPartySeats * 0.20;
-            break;
-          case 'caucus_chair':
-            const chairFaction = factions[party].find(f => f.id === senator.faction_id);
-            if (chairFaction) {
-              const partyFactions = factions[party].filter(f => f.senate_count > 0);
-              const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
-              const factionRank = sortedFactions.findIndex(f => f.id === chairFaction.id);
-              
-              if (factionRank === 0) leadershipBonus = totalPartySeats * 0.15;
-              else if (factionRank === 1) leadershipBonus = totalPartySeats * 0.10;
-              else leadershipBonus = totalPartySeats * 0.05;
-            } else {
-              leadershipBonus = totalPartySeats * 0.05;
-            }
-            break;
-          default:
-            leadershipBonus = 0;
-            break;
-        }
+        // Handle multiple roles
+        const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
+        let totalLeadershipBonus = 0;
         
-        idealWeights[senator.id] = baseWeight + leadershipBonus;
+        roles.forEach(role => {
+          switch(role) {
+            case 'party_leader':
+              totalLeadershipBonus += totalPartySeats * 0.25; // Based on entire party
+              break;
+            case 'party_whip':
+              totalLeadershipBonus += totalPartySeats * 0.20; // Based on entire party
+              break;
+            case 'caucus_chair':
+              const chairFaction = factions[party].find(f => f.id === senator.faction_id);
+              if (chairFaction) {
+                const partyFactions = factions[party].filter(f => f.senate_count > 0);
+                const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
+                const factionRank = sortedFactions.findIndex(f => f.id === chairFaction.id);
+                
+                if (factionRank === 0) totalLeadershipBonus += totalPartySeats * 0.15;
+                else if (factionRank === 1) totalLeadershipBonus += totalPartySeats * 0.10;
+                else totalLeadershipBonus += totalPartySeats * 0.05;
+              } else {
+                totalLeadershipBonus += totalPartySeats * 0.05;
+              }
+              break;
+            case 'committee_chair':
+              totalLeadershipBonus += totalPartySeats * 0.08;
+              break;
+            default:
+              break;
+          }
+        });
+        
+        idealWeights[senator.id] = baseWeight + totalLeadershipBonus;
       });
       
       const totalIdealWeight = Object.values(idealWeights).reduce((sum, weight) => sum + weight, 0);
@@ -1585,14 +1681,22 @@ document
       return calculateSenatorVoteWeight(senator, party);
     }
 
-    function getRoleDisplayName(role) {
-      switch(role) {
-        case 'party_leader': return 'Party Leader';
-        case 'party_whip': return 'Party Whip';
-        case 'caucus_chair': return 'Caucus Chair';
-        case 'senator':
-        default: return 'Senator';
-      }
+    function getRoleDisplayName(roles) {
+      if (!roles) return 'Senator';
+      
+      const roleArray = Array.isArray(roles) ? roles : [roles];
+      const displayNames = roleArray.map(role => {
+        switch(role) {
+          case 'party_leader': return 'Party Leader';
+          case 'party_whip': return 'Party Whip';
+          case 'caucus_chair': return 'Caucus Chair';
+          case 'committee_chair': return 'Committee Chair';
+          case 'senator':
+          default: return 'Senator';
+        }
+      });
+      
+      return displayNames.filter(name => name !== 'Senator').join(', ') || 'Senator';
     }
 
     // ===== RENDERING & VOTING LOGIC =====
@@ -1600,43 +1704,133 @@ document
       renderSenators();
       renderHouseFactions();
       updateSeatCounts();
+      updateResults(); // This will also update the Hastert Rule display
     }
 
     function renderSenators() {
       ['republican', 'democrat'].forEach(party => {
         const container = document.getElementById(party === 'republican' ? 'republicanSenators' : 'democratSenators');
         
-        const sortedSenators = [...senators[party]].sort((a, b) => {
-          const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'senator': 3 };
-          return roleOrder[a.role] - roleOrder[b.role];
+        // Group senators by faction
+        const factionGroups = {};
+        const unassignedSenators = [];
+        
+        senators[party].forEach(senator => {
+          if (senator.faction_id) {
+            const faction = factions[party].find(f => f.id === senator.faction_id);
+            if (faction) {
+              if (!factionGroups[faction.id]) {
+                factionGroups[faction.id] = {
+                  faction: faction,
+                  senators: []
+                };
+              }
+              factionGroups[faction.id].senators.push(senator);
+            } else {
+              unassignedSenators.push(senator);
+            }
+          } else {
+            unassignedSenators.push(senator);
+          }
         });
         
-        container.innerHTML = sortedSenators.map(senator => {
-          const faction = factions[party].find(f => f.id === senator.faction_id);
-          const factionName = faction ? faction.name : 'No Faction';
-          const roleDisplay = getRoleDisplayName(senator.role);
-          const voteWeight = getSenatorDisplayWeight(senator, party);
+        let html = '';
+        
+        // Render each faction group
+        Object.values(factionGroups).forEach(group => {
+          const sortedSenators = [...group.senators].sort((a, b) => {
+            const aRoles = Array.isArray(a.roles) ? a.roles : (a.role ? [a.role] : ['senator']);
+            const bRoles = Array.isArray(b.roles) ? b.roles : (b.role ? [b.role] : ['senator']);
+            const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'committee_chair': 3, 'senator': 4 };
+            const aMinRole = Math.min(...aRoles.map(r => roleOrder[r] || 4));
+            const bMinRole = Math.min(...bRoles.map(r => roleOrder[r] || 4));
+            return aMinRole - bMinRole;
+          });
           
-          return `
-            <div class="faction-item">
-              <div class="faction-info">
-                <div class="faction-name">${senator.name}</div>
-                <div class="faction-count">
-                  ${roleDisplay} | ${factionName} | Weight: ${voteWeight} votes
-                </div>
+          const totalSeats = group.faction.senate_count + group.faction.house_count;
+          
+          html += `
+            <div class="faction-group">
+              <div class="faction-group-header">
+                <span>${group.faction.name}</span>
+                <span class="faction-count-badge">${sortedSenators.length} senator${sortedSenators.length !== 1 ? 's' : ''} | ${totalSeats} total seats</span>
               </div>
-              <div class="vote-buttons">
-                <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
-                        onclick="vote('${senator.id}', 'aye', true)">AYE</button>
-                <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
-                        onclick="vote('${senator.id}', 'nay', true)">NAY</button>
-                <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
-                        onclick="vote('${senator.id}', 'pres', true)">PRES</button>
-              </div>
-              <button class="delete-btn" onclick="removeSenator('${party}', '${senator.id}')">×</button>
+              ${sortedSenators.map(senator => {
+                const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
+                const roleDisplay = getRoleDisplayName(roles);
+                const voteWeight = getSenatorDisplayWeight(senator, party);
+                
+                return `
+                  <div class="faction-item">
+                    <div class="faction-info">
+                      <div class="faction-name">${senator.name}</div>
+                      <div class="faction-count">
+                        ${roleDisplay} | Weight: ${voteWeight} votes
+                      </div>
+                    </div>
+                    <div class="vote-buttons">
+                      <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
+                              onclick="vote('${senator.id}', 'aye', true)">AYE</button>
+                      <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
+                              onclick="vote('${senator.id}', 'nay', true)">NAY</button>
+                      <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
+                              onclick="vote('${senator.id}', 'pres', true)">PRES</button>
+                    </div>
+                    <button class="delete-btn" onclick="removeSenator('${party}', '${senator.id}')">×</button>
+                  </div>
+                `;
+              }).join('')}
             </div>
           `;
-        }).join('');
+        });
+        
+        // Render unassigned senators
+        if (unassignedSenators.length > 0) {
+          const sortedUnassigned = [...unassignedSenators].sort((a, b) => {
+            const aRoles = Array.isArray(a.roles) ? a.roles : (a.role ? [a.role] : ['senator']);
+            const bRoles = Array.isArray(b.roles) ? b.roles : (b.role ? [b.role] : ['senator']);
+            const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'committee_chair': 3, 'senator': 4 };
+            const aMinRole = Math.min(...aRoles.map(r => roleOrder[r] || 4));
+            const bMinRole = Math.min(...bRoles.map(r => roleOrder[r] || 4));
+            return aMinRole - bMinRole;
+          });
+          
+          html += `
+            <div class="unassigned-group">
+              <div class="unassigned-group-header">
+                <span>Unassigned Senators</span>
+                <span class="faction-count-badge">${sortedUnassigned.length} senator${sortedUnassigned.length !== 1 ? 's' : ''}</span>
+              </div>
+              ${sortedUnassigned.map(senator => {
+                const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
+                const roleDisplay = getRoleDisplayName(roles);
+                const voteWeight = getSenatorDisplayWeight(senator, party);
+                
+                return `
+                  <div class="faction-item">
+                    <div class="faction-info">
+                      <div class="faction-name">${senator.name}</div>
+                      <div class="faction-count">
+                        ${roleDisplay} | No Faction | Weight: ${voteWeight} votes
+                      </div>
+                    </div>
+                    <div class="vote-buttons">
+                      <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
+                              onclick="vote('${senator.id}', 'aye', true)">AYE</button>
+                      <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
+                              onclick="vote('${senator.id}', 'nay', true)">NAY</button>
+                      <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
+                              onclick="vote('${senator.id}', 'pres', true)">PRES</button>
+                    </div>
+                    <button class="delete-btn" onclick="removeSenator('${party}', '${senator.id}')">×</button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
+        
+        container.innerHTML = html;
       });
     }
 
@@ -1644,23 +1838,26 @@ document
       ['republican', 'democrat'].forEach(party => {
         const container = document.getElementById(party === 'republican' ? 'republicanHouseFactions' : 'democratHouseFactions');
         
-        container.innerHTML = factions[party].filter(f => f.house_count > 0).map(faction => `
-          <div class="faction-item">
-            <div class="faction-info">
-              <div class="faction-name">${faction.name}</div>
-              <div class="faction-count">${faction.house_count} House members</div>
+        container.innerHTML = factions[party].filter(f => f.house_count > 0).map(faction => {
+          const totalSeats = faction.senate_count + faction.house_count;
+          return `
+            <div class="faction-item">
+              <div class="faction-info">
+                <div class="faction-name">${faction.name}</div>
+                <div class="faction-count">${faction.house_count} House members | ${totalSeats} total seats</div>
+              </div>
+              <div class="vote-buttons">
+                <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
+                        onclick="vote('${faction.id}', 'aye', false)">AYE</button>
+                <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
+                        onclick="vote('${faction.id}', 'nay', false)">NAY</button>
+                <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
+                        onclick="vote('${faction.id}', 'pres', false)">PRES</button>
+              </div>
+              <button class="delete-btn" onclick="removeFaction('${party}', '${faction.id}')">×</button>
             </div>
-            <div class="vote-buttons">
-              <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
-                      onclick="vote('${faction.id}', 'aye', false)">AYE</button>
-              <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
-                      onclick="vote('${faction.id}', 'nay', false)">NAY</button>
-              <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
-                      onclick="vote('${faction.id}', 'pres', false)">PRES</button>
-            </div>
-            <button class="delete-btn" onclick="removeFaction('${party}', '${faction.id}')">×</button>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       });
     }
 
@@ -1764,34 +1961,82 @@ document
         results.republican.house.nay + results.democrat.house.nay;
       document.getElementById('totalHousePres').textContent = 
         results.republican.house.pres + results.democrat.house.pres;
-    }  // ← end of the main updateResults
 
-// ─── HASTERt STATUS ────────────────────────────────────────────
-function updateHastertStatus() {
-  const majority = partySeats.republican.house > partySeats.democrat.house
-    ? 'republican'
-    : 'democrat';
-  const results = calculateResults();
-  const ayeCount = results[majority].house.aye;
-  const needed   = Math.floor(partySeats[majority].house/2) + 1;
-  const el       = document.getElementById('hastertStatus');
-  if (!el) return;
-  const cap = majority[0].toUpperCase() + majority.slice(1);
-  if (ayeCount >= needed) {
-    el.textContent = `Hastert Rule met for ${cap}: ${ayeCount} ≥ ${needed} ✅`;
-    el.style.color = '#2e7d32';
-  } else {
-    el.textContent = `Hastert Rule NOT met for ${cap}: ${ayeCount} / ${needed} ❌`;
-    el.style.color = '#c00';
-  }
-}
+      // Update Hastert Rule status
+      updateHastertRuleStatus(results);
+    }
 
-// wrap the original so it always updates our status
-const __origUpdateResults = updateResults;
-updateResults = function() {
-  __origUpdateResults();
-  updateHastertStatus();
-};
+    function updateHastertRuleStatus(results) {
+      const hastertEl = document.getElementById('hastertRuleStatus');
+      if (!hastertEl) return;
+
+      const repSeats = partySeats.republican.house;
+      const demSeats = partySeats.democrat.house;
+      const totalSeats = repSeats + demSeats;
+      
+      // Determine majority party
+      const majorityParty = repSeats > demSeats ? 'republican' : 'democrat';
+      const minorityParty = majorityParty === 'republican' ? 'democrat' : 'republican';
+      const majoritySeats = Math.max(repSeats, demSeats);
+      const majorityThreshold = Math.ceil(majoritySeats / 2);
+      
+      const majorityAyes = results[majorityParty].house.aye;
+      const minorityAyes = results[minorityParty].house.aye;
+      const totalAyes = majorityAyes + minorityAyes;
+      
+      // Check if any votes have been cast
+      const totalVotesCast = totalAyes + results.republican.house.nay + results.democrat.house.nay + 
+                            results.republican.house.pres + results.democrat.house.pres;
+      
+      if (totalVotesCast === 0) {
+        hastertEl.innerHTML = '<div style="color: #666; font-style: italic; text-align: center;">No votes cast yet</div>';
+        return;
+      }
+
+      const majorityPartyName = majorityParty === 'republican' ? 'Republican' : 'Democrat';
+      const hastertMet = majorityAyes >= majorityThreshold;
+      const billPassing = totalAyes > Math.floor(totalSeats / 2);
+      
+      let statusHtml = `
+        <div style="margin-bottom: 12px; text-align: center;">
+          <div style="margin-bottom: 6px;"><strong>Majority Party:</strong> ${majorityPartyName} (${majoritySeats} seats)</div>
+          <div style="margin-bottom: 6px;"><strong>Hastert Threshold:</strong> ${majorityThreshold} ${majorityPartyName} votes needed</div>
+          <div><strong>Current ${majorityPartyName} Ayes:</strong> ${majorityAyes}</div>
+        </div>
+      `;
+
+      if (hastertMet) {
+        statusHtml += `
+          <div class="hastert-satisfied">
+            ✅ HASTERT RULE: SATISFIED
+          </div>
+        `;
+      } else {
+        const needed = majorityThreshold - majorityAyes;
+        statusHtml += `
+          <div class="hastert-not-met">
+            ❌ HASTERT RULE: NOT MET<br>
+            <small>Need ${needed} more ${majorityPartyName} votes</small>
+          </div>
+        `;
+      }
+
+      if (billPassing) {
+        statusHtml += `
+          <div class="bill-status-passing">
+            📊 Bill Status: PASSING (${totalAyes} total ayes)
+          </div>
+        `;
+      } else {
+        statusHtml += `
+          <div class="bill-status-failing">
+            📊 Bill Status: FAILING (${totalAyes} total ayes)
+          </div>
+        `;
+      }
+
+      hastertEl.innerHTML = statusHtml;
+    }
 
     // ===== SESSION UI HELPERS =====
     async function switchSession() {
@@ -1970,7 +2215,8 @@ updateResults = function() {
     function addSenator() {
       const name = document.getElementById('senatorName').value.trim();
       const party = document.getElementById('senatorParty').value;
-      const role = document.getElementById('senatorRole').value;
+      const roleSelect = document.getElementById('senatorRole');
+      const selectedRoles = Array.from(roleSelect.selectedOptions).map(option => option.value);
       const factionId = document.getElementById('senatorFaction').value;
 
       if (!name) {
@@ -1978,11 +2224,19 @@ updateResults = function() {
         return;
       }
 
-      if (role === 'party_leader' || role === 'party_whip') {
-        const existingRoles = senators[party].filter(s => s.role === role);
-        if (existingRoles.length > 0) {
-          alert(`There can only be one ${role.replace('_', ' ')} per party. Current ${role.replace('_', ' ')}: ${existingRoles[0].name}`);
-          return;
+      // Check for exclusive leadership roles per party
+      const exclusiveRoles = ['party_leader', 'party_whip'];
+      for (const role of exclusiveRoles) {
+        if (selectedRoles.includes(role)) {
+          const existingRoles = senators[party].filter(s => {
+            const roles = Array.isArray(s.roles) ? s.roles : (s.role ? [s.role] : []);
+            return roles.includes(role);
+          });
+          if (existingRoles.length > 0) {
+            const roleName = role.replace('_', ' ');
+            alert(`There can only be one ${roleName} per party. Current ${roleName}: ${existingRoles[0].name}`);
+            return;
+          }
         }
       }
 
@@ -1990,12 +2244,17 @@ updateResults = function() {
         id: Date.now(),
         name: name,
         party: party,
-        role: role,
+        roles: selectedRoles.length > 0 ? selectedRoles : ['senator'],
         faction_id: factionId ? factionId : null
       };
       
       senators[party].push(newSenator);
       document.getElementById('senatorName').value = '';
+      
+      // Reset role selection
+      for (let option of roleSelect.options) {
+        option.selected = false;
+      }
       
       clearWeightCache();
       renderAll();
