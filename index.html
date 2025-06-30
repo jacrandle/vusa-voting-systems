@@ -2299,14 +2299,131 @@
       const senator = senators[party].find(s => s.id == id);
       if (!senator) return;
 
-      const newName = prompt('Edit senator name:', senator.name);
-      if (!newName || newName.trim() === '') return;
+      // Create edit form
+      const editForm = `
+        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 400px;">
+          <h3 style="margin-bottom: 15px;">Edit Senator</h3>
+          
+          <label>Name:</label>
+          <input type="text" id="editName" value="${senator.name}" style="width: 100%; margin-bottom: 10px;">
+          
+          <label>Party:</label>
+          <select id="editParty" style="width: 100%; margin-bottom: 10px;">
+            <option value="republican" ${senator.party === 'republican' ? 'selected' : ''}>Republican</option>
+            <option value="democrat" ${senator.party === 'democrat' ? 'selected' : ''}>Democrat</option>
+          </select>
+          
+          <label>Roles:</label>
+          <select id="editRoles" multiple style="width: 100%; height: 80px; margin-bottom: 10px;">
+            <option value="senator">Senator</option>
+            <option value="party_leader">Party Leader</option>
+            <option value="party_whip">Party Whip</option>
+            <option value="caucus_chair">Caucus Chair</option>
+          </select>
+          
+          <label>Faction:</label>
+          <select id="editFaction" style="width: 100%; margin-bottom: 15px;">
+            <option value="">No faction</option>
+          </select>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="cancelEdit()" style="background: #6c757d;">Cancel</button>
+            <button onclick="saveEdit('${party}', '${id}')" style="background: #28a745;">Save</button>
+          </div>
+        </div>
+        <div id="editOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999;" onclick="cancelEdit()"></div>
+      `;
 
-      senator.name = newName.trim();
+      document.body.insertAdjacentHTML('beforeend', editForm);
+
+      // Populate faction dropdown
+      const editFactionSelect = document.getElementById('editFaction');
+      ['republican', 'democrat'].forEach(p => {
+        factions[p].forEach(faction => {
+          const option = document.createElement('option');
+          option.value = faction.id;
+          option.textContent = `${faction.name} (${p.charAt(0).toUpperCase() + p.slice(1)})`;
+          option.selected = faction.id === senator.faction_id;
+          editFactionSelect.appendChild(option);
+        });
+      });
+
+      // Set selected roles
+      const editRoles = document.getElementById('editRoles');
+      const senatorRoles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
+      Array.from(editRoles.options).forEach(option => {
+        option.selected = senatorRoles.includes(option.value);
+      });
+    }
+
+    function saveEdit(party, id) {
+      const senator = senators[party].find(s => s.id == id);
+      if (!senator) return;
+
+      const newName = document.getElementById('editName').value.trim();
+      const newParty = document.getElementById('editParty').value;
+      const editRoles = document.getElementById('editRoles');
+      const selectedRoles = Array.from(editRoles.selectedOptions).map(option => option.value);
+      const newFaction = document.getElementById('editFaction').value;
+
+      if (!newName) {
+        alert('Please enter a senator name');
+        return;
+      }
+
+      // Check for exclusive leadership roles if changing party or roles
+      if (newParty !== party || !arraysEqual(selectedRoles, senator.roles)) {
+        const exclusiveRoles = ['party_leader', 'party_whip'];
+        for (const role of exclusiveRoles) {
+          if (selectedRoles.includes(role)) {
+            const existingRoles = senators[newParty].filter(s => {
+              if (s.id === senator.id) return false; // Exclude current senator
+              const roles = Array.isArray(s.roles) ? s.roles : (s.role ? [s.role] : []);
+              return roles.includes(role);
+            });
+            if (existingRoles.length > 0) {
+              const roleName = role.replace('_', ' ');
+              alert(`There can only be one ${roleName} per party. Current ${roleName}: ${existingRoles[0].name}`);
+              return;
+            }
+          }
+        }
+      }
+
+      // Remove from old party if changed
+      if (newParty !== party) {
+        senators[party] = senators[party].filter(s => s.id !== senator.id);
+      }
+
+      // Update senator
+      senator.name = newName;
+      senator.party = newParty;
+      senator.roles = selectedRoles.length > 0 ? selectedRoles : ['senator'];
+      senator.faction_id = newFaction || null;
+
+      // Add to new party if changed
+      if (newParty !== party) {
+        senators[newParty].push(senator);
+      }
+
+      cancelEdit();
       clearWeightCache();
       renderAll();
       updateResults();
       autoSave();
+    }
+
+    function cancelEdit() {
+      const editForm = document.querySelector('div[style*="position: fixed"]');
+      const overlay = document.getElementById('editOverlay');
+      if (editForm) editForm.remove();
+      if (overlay) overlay.remove();
+    }
+
+    function arraysEqual(a, b) {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+      return a.every((val, index) => val === b[index]);
     }
 
     function addBulkSenators() {
