@@ -835,23 +835,14 @@
             try {
                 const detailsEl = document.getElementById('connectionDetails');
                 
-                if (detailsEl) detailsEl.textContent = 'Loading Google Sheets API...';
+                if (detailsEl) detailsEl.textContent = 'Loading Google API from multiple CDNs...';
                 
-                // Wait for Google API to load
-                await new Promise((resolve, reject) => {
-                    let attempts = 0;
-                    const checkAPI = () => {
-                        if (window.gapi) {
-                            resolve();
-                        } else if (attempts < 20) {
-                            attempts++;
-                            setTimeout(checkAPI, 250);
-                        } else {
-                            reject(new Error('Google API failed to load'));
-                        }
-                    };
-                    checkAPI();
-                });
+                // Try to load Google API from multiple CDNs
+                const loaded = await window.loadGoogleAPI();
+                
+                if (!loaded || !window.gapi) {
+                    throw new Error('All Google API CDN sources failed to load. This is likely a network/firewall issue blocking Google APIs.');
+                }
                 
                 if (detailsEl) detailsEl.textContent = 'Initializing Google Sheets API...';
                 
@@ -892,12 +883,16 @@
                 console.error('❌ Google Sheets connection failed:', error);
                 
                 const detailsEl = document.getElementById('connectionDetails');
-                if (error.message.includes('The caller does not have permission')) {
-                    if (detailsEl) detailsEl.textContent = 'Permission denied - make sure spreadsheet is shared publicly';
-                    console.log('📋 Spreadsheet permission issue:');
-                    console.log('📋 1. Go to your spreadsheet');
-                    console.log('📋 2. Click "Share" button');
-                    console.log('📋 3. Change to "Anyone with the link" → "Editor"');
+                if (error.message.includes('All Google API CDN sources failed')) {
+                    if (detailsEl) detailsEl.textContent = 'Google API blocked - network/firewall issue, using local storage';
+                    console.log('🔒 Network/firewall is blocking Google APIs');
+                    console.log('📋 This could be:');
+                    console.log('📋 - Corporate firewall blocking googleapis.com');
+                    console.log('📋 - Ad blocker blocking Google scripts');
+                    console.log('📋 - Network restrictions');
+                } else if (error.message.includes('The caller does not have permission')) {
+                    if (detailsEl) detailsEl.textContent = 'Permission denied - check spreadsheet sharing settings';
+                    console.log('📋 Spreadsheet permission issue - make sure it\'s shared publicly');
                 } else if (error.message.includes('API key not valid')) {
                     if (detailsEl) detailsEl.textContent = 'API key invalid - check Google Cloud Console';
                     console.log('📋 API key issue - make sure Google Sheets API is enabled');
@@ -2025,7 +2020,7 @@
             switch(status) {
                 case 'local':
                     if (statusEl) statusEl.textContent = '📁 Local + File Backup';
-                    if (detailsEl && !detailsEl.textContent.includes('API key')) {
+                    if (detailsEl && !detailsEl.textContent.includes('Google API blocked') && !detailsEl.textContent.includes('Permission denied')) {
                         detailsEl.textContent = 'Google Sheets unavailable - using enhanced local storage with file backup';
                     }
                     if (syncBtn) syncBtn.disabled = false;
@@ -2042,7 +2037,7 @@
                     break;
                 case 'offline':
                     if (statusEl) statusEl.textContent = '📁 Local + File Backup';
-                    if (detailsEl && !detailsEl.textContent.includes('API key')) {
+                    if (detailsEl && !detailsEl.textContent.includes('Google API blocked') && !detailsEl.textContent.includes('Permission denied') && !detailsEl.textContent.includes('API key')) {
                         detailsEl.textContent = 'Google Sheets connection failed - using enhanced local storage with import/export';
                     }
                     if (syncBtn) syncBtn.disabled = false;
