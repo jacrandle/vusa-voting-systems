@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+async function syncWithDatabase() {
+      try {
+        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+    <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -8,47 +11,116 @@
   <!-- 1) Define your Google keys & startup callbacks BEFORE loading api.js -->
   <script>
     // ===== GOOGLE SHEETS CONFIGURATION =====
-    const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
-    const OAUTH2_CLIENT_ID = 'YOUR_OAUTH2_CLIENT_ID.apps.googleusercontent.com'; // Replace with your OAuth2 Client ID from Google Cloud Console
+    const API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
+    const CLIENT_ID = 'YOUR_OAUTH2_CLIENT_ID.apps.googleusercontent.com'; // Replace with your OAuth2 Client ID
     const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew';
+    const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
+    const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
-    function onGapiLoad() {
-      console.log('✅ api.js loaded, now loading client and auth2...');
-      // load both the Sheets client *and* the auth2 library
-      gapi.load('client:auth2', onClientLoad, onClientError);
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+
+    // ─── 1) Load gapi.client ──────────────────────────────────────
+    function gapiLoaded() {
+      console.log('✅ gapi.js loaded, initializing client...');
+      gapi.load('client', async () => {
+        try {
+          await gapi.client.init({
+            apiKey: API_KEY,
+            discoveryDocs: DISCOVERY_DOCS
+          });
+          console.log('✅ gapi.client initialized');
+          gapiInited = true;
+          maybeEnableAuth();
+        } catch (error) {
+          console.error('❌ gapi.client.init failed:', error);
+          startMyAppOffline();
+        }
+      });
     }
 
-    function onClientLoad() {
-      console.log('✅ gapi.client and auth2 modules ready, initializing...');
-      gapi.client
-        .init({
-          apiKey: GOOGLE_API_KEY,
-          clientId: OAUTH2_CLIENT_ID,
-          discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-          scope: 'https://www.googleapis.com/auth/spreadsheets'
-        })
-        .then(() => {
-          console.log('✅ gapi.client initialized, signing in...');
-          // make the user sign in and grant the scope
-          return gapi.auth2.getAuthInstance().signIn();
-        })
-        .then(() => {
-          console.log('✅ Signed in and ready to call Sheets');
-          startMyApp(); // your sheet-powered code
-        })
-        .catch(err => {
-          console.error('❌ gapi.client.init / signIn failed:', err);
-          startMyAppOffline(); // fallback
-        });
+    // ─── 2) Load Google Identity Services ─────────────────────────
+    function gisLoaded() {
+      console.log('✅ Google Identity Services loaded');
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (tokenResponse) => {
+          if (tokenResponse.error) {
+            console.error('❌ Token error:', tokenResponse);
+            startMyAppOffline();
+            return;
+          }
+          console.log('✅ OAuth2 token received');
+          // Now that we have an access token, start the app
+          startMyApp();
+        }
+      });
+      gisInited = true;
+      maybeEnableAuth();
     }
 
-    function onClientError(err) {
-      console.error("❌ Failed to load gapi.client/auth2:", err);
-      startMyAppOffline();
+    // ─── 3) Check if both APIs are ready ───────────────────────────
+    function maybeEnableAuth() {
+      if (gapiInited && gisInited) {
+        console.log('✅ Both APIs ready, checking if user needs to authorize...');
+        updateAuthUI();
+        // Auto-start authorization for seamless experience
+        handleAuthClick();
+      }
+    }
+
+    // ─── 4) Click to authorize ─────────────────────────────────────
+    function handleAuthClick() {
+      console.log('🔑 Requesting authorization...');
+      const detailsEl = document.getElementById('connectionDetails');
+      if (detailsEl) detailsEl.textContent = 'Requesting Google authorization...';
+      
+      // Request an access token
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    }
+
+    // ─── 5) Sign out ───────────────────────────────────────────────
+    function handleSignoutClick() {
+      const token = gapi.client.getToken();
+      if (token !== null) {
+        google.accounts.oauth2.revoke(token.access_token);
+        gapi.client.setToken('');
+        console.log('✅ Signed out');
+        updateAuthUI();
+        startMyAppOffline();
+      }
+    }
+
+    // ─── 6) Update UI based on auth status ────────────────────────
+    function updateAuthUI() {
+      const signInBtn = document.getElementById('authorizeBtn');
+      const signOutBtn = document.getElementById('signoutBtn');
+      const authStatus = document.getElementById('authStatus');
+      
+      const isAuthorized = gapi.client.getToken() !== null;
+      
+      if (isAuthorized) {
+        if (signInBtn) signInBtn.style.display = 'none';
+        if (signOutBtn) signOutBtn.style.display = 'inline-block';
+        if (authStatus) authStatus.textContent = '✅ Authorized';
+      } else {
+        if (signInBtn) signInBtn.style.display = 'inline-block';
+        if (signOutBtn) signOutBtn.style.display = 'none';
+        if (authStatus) authStatus.textContent = '🔑 Authorization required';
+      }
     }
 
     // ============ Your two entrypoints ==============
     async function startMyApp() {
+      const isAuthorized = gapi.client.getToken() !== null;
+      if (!isAuthorized) {
+        console.log('⚠️ Not authorized, cannot start Google Sheets mode');
+        startMyAppOffline();
+        return;
+      }
+
       console.log('🚀 Starting with Google Sheets connection…');
       syncEnabled = true;
       updateSyncStatus('syncing');
@@ -56,7 +128,7 @@
       if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection…';
 
       try {
-        // Test metadata - now uses OAuth2 token automatically
+        // Test metadata - uses the OAuth2 token automatically
         const resp = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
         if (!resp.result) throw new Error('Cannot access spreadsheet.');
         console.log('✅ Google Sheets connected:', resp.result.properties.title);
@@ -64,6 +136,7 @@
         await initializeSheetStructure();
         await loadAvailableSessions();
         updateSyncStatus('synced');
+        updateAuthUI();
         if (currentSessionId) await loadSessionFromSheets(currentSessionId);
         updateSessionSelector();
         console.log('✅ Google Sheets mode ready!');
@@ -85,6 +158,7 @@
       console.log('📁 Starting in offline mode…');
       syncEnabled = false;
       updateSyncStatus('offline');
+      updateAuthUI();
       const detailsEl = document.getElementById('connectionDetails');
       if (detailsEl) detailsEl.textContent = 'Using enhanced local storage with file backup';
 
@@ -114,8 +188,10 @@
     let isOnline = navigator.onLine;
   </script>
 
-  <!-- 2) Load the Google API exactly once, with defer -->
-  <script defer src="https://apis.google.com/js/api.js?onload=onGapiLoad"></script>
+  <!-- Load Google Identity Services -->
+  <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+  <!-- Load gapi.client -->
+  <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
 
   <!-- 3) Your CSS -->
   <style>
@@ -629,8 +705,8 @@
            target="_blank" style="color:#fff;text-decoration:underline">
           Your Google Sheet
         </a><br/>
-        ⚠️ <strong>Replace:</strong> OAUTH2_CLIENT_ID with your Google Cloud Console Client ID<br/>
-        🔄 <strong>Auth Flow:</strong> Will prompt for Google sign-in on page load<br/>
+        ⚠️ <strong>Replace:</strong> CLIENT_ID with your Google Cloud Console Client ID<br/>
+        🔄 <strong>Modern Flow:</strong> Google Identity + gapi hybrid authentication<br/>
         🚀 <strong>Ready to test!</strong> Serve via http://localhost (not file://)
       </div>
     </div>
@@ -650,10 +726,17 @@
           <button onclick="exportAllData()" title="Export to file">📁↓</button>
         </div>
         <div>
-          <strong>Status:</strong> <span id="connectionDetails">Initializing...</span>
+          <strong>Status:</strong> <span id="connectionDetails">Initializing...</span><br>
+          <strong>Auth:</strong> <span id="authStatus">🔑 Loading...</span>
         </div>
       </div>
-      <div style="display: flex; gap: 15px; align-items: center;">
+      <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+        <button id="authorizeBtn" onclick="handleAuthClick()" class="sync-btn" style="width: 120px; display: none;">
+          🔑 Authorize
+        </button>
+        <button id="signoutBtn" onclick="handleSignoutClick()" class="clear-btn" style="width: 120px; display: none;">
+          Sign Out
+        </button>
         <button onclick="syncWithDatabase()" class="sync-btn" style="width: 120px;" id="syncBtn">
           Sync Now
         </button>
@@ -1940,7 +2023,9 @@
     }
 
     async function syncWithDatabase() {
-      if (!syncEnabled) {
+      const isAuthorized = gapi.client.getToken() !== null;
+      
+      if (!syncEnabled || !isAuthorized) {
         saveToLocalStorage();
         updateSyncStatus('local');
         
@@ -1950,9 +2035,13 @@
         
         setTimeout(() => {
           btn.textContent = originalText;
-          const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
-          if (shouldExport) {
-            exportAllData();
+          if (!isAuthorized) {
+            alert('Authorize with Google to sync with Google Sheets, or use local storage with file export for backup.');
+          } else {
+            const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
+            if (shouldExport) {
+              exportAllData();
+            }
           }
         }, 2000);
         return;
@@ -1978,7 +2067,8 @@
 
     async function autoSave() {
       try {
-        if (syncEnabled) {
+        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+        if (syncEnabled && isAuthorized) {
           clearTimeout(window.autoSaveTimeout);
           window.autoSaveTimeout = setTimeout(async () => {
             await saveSessionToSheets();
@@ -1988,19 +2078,22 @@
         }
       } catch (error) {
         console.error('Auto-save error:', error);
+        saveToLocalStorage();
       }
     }
 
     // ===== APP INITIALIZATION =====
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('🚀 App starting – waiting for Google API…');
-      document.getElementById('connectionDetails').textContent = 'Waiting for Google API to load…';
+      console.log('🚀 App starting – waiting for Google APIs…');
+      document.getElementById('connectionDetails').textContent = 'Waiting for Google APIs to load…';
+      document.getElementById('authStatus').textContent = '🔑 Loading...';
       updateSyncStatus('offline');
       
-      // fallback if Google API never loads
+      // fallback if Google APIs never load
       setTimeout(()=>{
-        if (!syncEnabled && !window.gapi) {
-          console.log('⏰ Google API timeout – starting offline mode');
+        if (!gapiInited || !gisInited) {
+          console.log('⏰ Google APIs timeout – starting offline mode');
+          document.getElementById('authStatus').textContent = '❌ Google APIs failed to load';
           startMyAppOffline();
         }
       }, 20000);
@@ -2012,8 +2105,14 @@
 
     // ===== AUTO-SAVE =====
     setInterval(()=>{
-      if (syncEnabled) autoSave();
-      else saveToLocalStorage();
+      try {
+        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+        if (syncEnabled && isAuthorized) autoSave();
+        else saveToLocalStorage();
+      } catch (error) {
+        // If there's any error checking auth status, just use local storage
+        saveToLocalStorage();
+      }
     }, 60000);
   </script>
 </body>
