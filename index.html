@@ -1,7 +1,4 @@
-async function syncWithDatabase() {
-      try {
-        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -83,13 +80,19 @@ async function syncWithDatabase() {
 
     // ─── 5) Sign out ───────────────────────────────────────────────
     function handleSignoutClick() {
-      const token = gapi.client.getToken();
-      if (token !== null) {
-        google.accounts.oauth2.revoke(token.access_token);
-        gapi.client.setToken('');
-        console.log('✅ Signed out');
-        updateAuthUI();
-        startMyAppOffline();
+      try {
+        const token = gapi && gapi.client && gapi.client.getToken();
+        if (token !== null) {
+          google.accounts.oauth2.revoke(token.access_token);
+          gapi.client.setToken('');
+          console.log('✅ Signed out');
+          updateAuthUI();
+          startMyAppOffline();
+        }
+      } catch (error) {
+        console.error('Error during sign out:', error);
+        // Force a refresh to clear any cached state
+        location.reload();
       }
     }
 
@@ -99,13 +102,20 @@ async function syncWithDatabase() {
       const signOutBtn = document.getElementById('signoutBtn');
       const authStatus = document.getElementById('authStatus');
       
-      const isAuthorized = gapi.client.getToken() !== null;
-      
-      if (isAuthorized) {
-        if (signInBtn) signInBtn.style.display = 'none';
-        if (signOutBtn) signOutBtn.style.display = 'inline-block';
-        if (authStatus) authStatus.textContent = '✅ Authorized';
-      } else {
+      try {
+        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+        
+        if (isAuthorized) {
+          if (signInBtn) signInBtn.style.display = 'none';
+          if (signOutBtn) signOutBtn.style.display = 'inline-block';
+          if (authStatus) authStatus.textContent = '✅ Authorized';
+        } else {
+          if (signInBtn) signInBtn.style.display = 'inline-block';
+          if (signOutBtn) signOutBtn.style.display = 'none';
+          if (authStatus) authStatus.textContent = '🔑 Authorization required';
+        }
+      } catch (error) {
+        // If there's any error checking auth status, show as not authorized
         if (signInBtn) signInBtn.style.display = 'inline-block';
         if (signOutBtn) signOutBtn.style.display = 'none';
         if (authStatus) authStatus.textContent = '🔑 Authorization required';
@@ -114,20 +124,20 @@ async function syncWithDatabase() {
 
     // ============ Your two entrypoints ==============
     async function startMyApp() {
-      const isAuthorized = gapi.client.getToken() !== null;
-      if (!isAuthorized) {
-        console.log('⚠️ Not authorized, cannot start Google Sheets mode');
-        startMyAppOffline();
-        return;
-      }
-
-      console.log('🚀 Starting with Google Sheets connection…');
-      syncEnabled = true;
-      updateSyncStatus('syncing');
-      const detailsEl = document.getElementById('connectionDetails');
-      if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection…';
-
       try {
+        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+        if (!isAuthorized) {
+          console.log('⚠️ Not authorized, cannot start Google Sheets mode');
+          startMyAppOffline();
+          return;
+        }
+
+        console.log('🚀 Starting with Google Sheets connection…');
+        syncEnabled = true;
+        updateSyncStatus('syncing');
+        const detailsEl = document.getElementById('connectionDetails');
+        if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection…';
+
         // Test metadata - uses the OAuth2 token automatically
         const resp = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
         if (!resp.result) throw new Error('Cannot access spreadsheet.');
@@ -147,8 +157,8 @@ async function syncWithDatabase() {
         if (detailsEl) {
           if (err.status === 403) detailsEl.textContent = 'Permission denied – check share settings.';
           else if (err.status === 404) detailsEl.textContent = 'Spreadsheet not found – check ID.';
-          else if (err.message.includes('API key')) detailsEl.textContent = 'Invalid API key.';
-          else detailsEl.textContent = 'Google Sheets error: ' + err.message;
+          else if (err.message && err.message.includes('API key')) detailsEl.textContent = 'Invalid API key.';
+          else detailsEl.textContent = 'Google Sheets error: ' + (err.message || err);
         }
         startMyAppOffline();
       }
@@ -2023,33 +2033,33 @@ async function syncWithDatabase() {
     }
 
     async function syncWithDatabase() {
-      const isAuthorized = gapi.client.getToken() !== null;
-      
-      if (!syncEnabled || !isAuthorized) {
-        saveToLocalStorage();
-        updateSyncStatus('local');
-        
-        const btn = document.getElementById('syncBtn');
-        const originalText = btn.textContent;
-        btn.textContent = 'Saved!';
-        
-        setTimeout(() => {
-          btn.textContent = originalText;
-          if (!isAuthorized) {
-            alert('Authorize with Google to sync with Google Sheets, or use local storage with file export for backup.');
-          } else {
-            const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
-            if (shouldExport) {
-              exportAllData();
-            }
-          }
-        }, 2000);
-        return;
-      }
-      
-      console.log('🔄 Starting database sync...');
-      
       try {
+        const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+        
+        if (!syncEnabled || !isAuthorized) {
+          saveToLocalStorage();
+          updateSyncStatus('local');
+          
+          const btn = document.getElementById('syncBtn');
+          const originalText = btn.textContent;
+          btn.textContent = 'Saved!';
+          
+          setTimeout(() => {
+            btn.textContent = originalText;
+            if (!isAuthorized) {
+              alert('Authorize with Google to sync with Google Sheets, or use local storage with file export for backup.');
+            } else {
+              const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
+              if (shouldExport) {
+                exportAllData();
+              }
+            }
+          }, 2000);
+          return;
+        }
+        
+        console.log('🔄 Starting database sync...');
+        
         await saveSessionToSheets();
         
         const btn = document.getElementById('syncBtn');
