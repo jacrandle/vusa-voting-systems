@@ -1747,13 +1747,14 @@
             return aMinRole - bMinRole;
           });
           
-          const totalSeats = group.faction.senate_count + group.faction.house_count;
+          // Only show senate seats for Senate faction display
+          const senateSeats = group.faction.senate_count;
           
           html += `
             <div class="faction-group">
               <div class="faction-group-header">
                 <span>${group.faction.name}</span>
-                <span class="faction-count-badge">${sortedSenators.length} senator${sortedSenators.length !== 1 ? 's' : ''} | ${totalSeats} total seats</span>
+                <span class="faction-count-badge">${sortedSenators.length} senator${sortedSenators.length !== 1 ? 's' : ''} | ${senateSeats} senate seats</span>
               </div>
               ${sortedSenators.map(senator => {
                 const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
@@ -1862,8 +1863,6 @@
     }
 
     function updateSeatCounts() {
-      const repSenateCurrent = senators.republican.length;
-      const demSenateCurrent = senators.democrat.length;
       const repHouseCurrent = factions.republican.reduce((sum, f) => sum + (f.house_count || 0), 0);
       const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + (f.house_count || 0), 0);
 
@@ -1872,8 +1871,9 @@
       const repTotalWeight = Object.values(repWeights).reduce((sum, weight) => sum + weight, 0);
       const demTotalWeight = Object.values(demWeights).reduce((sum, weight) => sum + weight, 0);
 
-      document.getElementById('repSenateCurrent').textContent = repSenateCurrent;
-      document.getElementById('demSenateCurrent').textContent = demSenateCurrent;
+      // Show total weighted votes as numerator, not senator count
+      document.getElementById('repSenateCurrent').textContent = repTotalWeight;
+      document.getElementById('demSenateCurrent').textContent = demTotalWeight;
       document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
       document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
       
