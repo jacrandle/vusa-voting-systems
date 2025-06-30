@@ -9,7 +9,7 @@
   <script>
     // ===== GOOGLE SHEETS CONFIGURATION =====
     const API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk';
-    const CLIENT_ID = 'YOUR_OAUTH2_CLIENT_ID.apps.googleusercontent.com'; // Replace with your OAuth2 Client ID
+    const CLIENT_ID = '790060690197-bst9vs10pu526kqup00jh8rk6kmufp2c.apps.googleusercontent.com';
     const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew';
     const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
     const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
@@ -50,7 +50,6 @@
             return;
           }
           console.log('✅ OAuth2 token received');
-          // Now that we have an access token, start the app
           startMyApp();
         }
       });
@@ -715,7 +714,7 @@
            target="_blank" style="color:#fff;text-decoration:underline">
           Your Google Sheet
         </a><br/>
-        ⚠️ <strong>Replace:</strong> CLIENT_ID with your Google Cloud Console Client ID<br/>
+        ✅ <strong>OAuth2 Client ID:</strong> Configured and ready<br/>
         🔄 <strong>Modern Flow:</strong> Google Identity + gapi hybrid authentication<br/>
         🚀 <strong>Ready to test!</strong> Serve via http://localhost (not file://)
       </div>
