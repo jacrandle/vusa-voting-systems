@@ -838,9 +838,22 @@
                         script.async = true;
                         script.defer = true;
                         
-                        script.onload = () => {
+                        script.onload = async () => {
                             console.log(`✅ Loaded Google API from: ${url}`);
-                            scriptResolve(true);
+                            // Wait for gapi to be fully available
+                            let waitCount = 0;
+                            while (!window.gapi && waitCount < 50) {
+                                await new Promise(r => setTimeout(r, 100));
+                                waitCount++;
+                            }
+                            
+                            if (window.gapi) {
+                                console.log('✅ Google API fully initialized');
+                                scriptResolve(true);
+                            } else {
+                                console.log('❌ Google API failed to initialize');
+                                scriptReject(false);
+                            }
                         };
                         
                         script.onerror = () => {
@@ -854,7 +867,7 @@
                                 console.log(`⏰ Timeout loading from: ${url}`);
                                 scriptReject(false);
                             }
-                        }, 10000);
+                        }, 15000);
                         
                         document.head.appendChild(script);
                     });
@@ -869,14 +882,7 @@
                     
                     try {
                         await tryLoadScript(cdnOptions[attemptCount]);
-                        // Wait a moment for gapi to be available
-                        await new Promise(r => setTimeout(r, 500));
-                        
-                        if (window.gapi) {
-                            resolve(true);
-                        } else {
-                            throw new Error('gapi not available');
-                        }
+                        resolve(true);
                     } catch (error) {
                         attemptCount++;
                         tryNextCDN();
@@ -884,7 +890,7 @@
                 }
                 
                 // Check if gapi is already loaded
-                if (window.gapi) {
+                if (window.gapi && window.gapi.load) {
                     console.log('✅ Google API already loaded');
                     resolve(true);
                     return;
@@ -904,38 +910,79 @@
                 // Try to load Google API from multiple CDNs
                 const loaded = await loadGoogleAPI();
                 
-                if (!loaded || !window.gapi) {
+                if (!loaded || !window.gapi || !window.gapi.load) {
                     throw new Error('All Google API CDN sources failed to load. This is likely a network/firewall issue blocking Google APIs.');
                 }
                 
                 if (detailsEl) detailsEl.textContent = 'Initializing Google Sheets API...';
                 
-                // Initialize the API
-                await new Promise((resolve, reject) => {
-                    window.gapi.load('client', {
-                        callback: resolve,
-                        onerror: reject
+                // Initialize the API with better error handling
+                try {
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('Google API initialization timeout'));
+                        }, 10000);
+                        
+                        window.gapi.load('client', {
+                            callback: () => {
+                                clearTimeout(timeout);
+                                console.log('✅ Google API client loaded');
+                                resolve();
+                            },
+                            onerror: (error) => {
+                                clearTimeout(timeout);
+                                console.error('❌ Google API client load error:', error);
+                                reject(new Error('Failed to load Google API client'));
+                            }
+                        });
                     });
-                });
+                } catch (error) {
+                    console.error('❌ Google API load error:', error);
+                    throw new Error('Failed to initialize Google API client: ' + error.message);
+                }
                 
-                await window.gapi.client.init({
-                    apiKey: GOOGLE_API_KEY,
-                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                });
+                // Wait a moment for the client to be ready
+                await new Promise(r => setTimeout(r, 500));
+                
+                try {
+                    await window.gapi.client.init({
+                        apiKey: GOOGLE_API_KEY,
+                        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                    });
+                    console.log('✅ Google Sheets API initialized');
+                } catch (error) {
+                    console.error('❌ Google Sheets API init error:', error);
+                    throw new Error('Failed to initialize Google Sheets API: ' + error.message);
+                }
                 
                 if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection...';
                 
                 // Test connection by reading spreadsheet metadata
-                const response = await window.gapi.client.sheets.spreadsheets.get({
-                    spreadsheetId: SPREADSHEET_ID
-                });
-                
-                if (!response.result) {
-                    throw new Error('Cannot access spreadsheet - check permissions');
+                try {
+                    const response = await window.gapi.client.sheets.spreadsheets.get({
+                        spreadsheetId: SPREADSHEET_ID
+                    });
+                    
+                    if (!response.result) {
+                        throw new Error('Cannot access spreadsheet - check permissions');
+                    }
+                    
+                    console.log('✅ Google Sheets connected successfully');
+                    console.log('📊 Spreadsheet:', response.result.properties.title);
+                } catch (error) {
+                    console.error('❌ Google Sheets access error:', error);
+                    
+                    if (error.status === 403) {
+                        throw new Error('Permission denied - make sure the spreadsheet is shared with "Anyone with the link can edit"');
+                    } else if (error.status === 404) {
+                        throw new Error('Spreadsheet not found - check the SPREADSHEET_ID');
+                    } else if (error.message.includes('API key')) {
+                        throw new Error('API key invalid - make sure Google Sheets API is enabled in Google Cloud Console');
+                    } else {
+                        throw new Error('Cannot access spreadsheet: ' + error.message);
+                    }
                 }
                 
-                console.log('✅ Google Sheets connected successfully');
-                console.log('📊 Spreadsheet:', response.result.properties.title);
                 syncEnabled = true;
                 
                 // Initialize sheets if they don't exist
@@ -954,12 +1001,15 @@
                     console.log('📋 - Corporate firewall blocking googleapis.com');
                     console.log('📋 - Ad blocker blocking Google scripts');
                     console.log('📋 - Network restrictions');
-                } else if (error.message.includes('The caller does not have permission')) {
+                } else if (error.message.includes('Permission denied')) {
                     if (detailsEl) detailsEl.textContent = 'Permission denied - check spreadsheet sharing settings';
-                    console.log('📋 Spreadsheet permission issue - make sure it\'s shared publicly');
-                } else if (error.message.includes('API key not valid')) {
+                    console.log('📋 Spreadsheet permission issue - make sure it\'s shared with "Anyone with the link can edit"');
+                } else if (error.message.includes('API key')) {
                     if (detailsEl) detailsEl.textContent = 'API key invalid - check Google Cloud Console';
                     console.log('📋 API key issue - make sure Google Sheets API is enabled');
+                } else if (error.message.includes('timeout') || error.message.includes('client')) {
+                    if (detailsEl) detailsEl.textContent = 'Google API initialization failed - using local storage';
+                    console.log('📋 Google API initialization issue - possible network or timing problem');
                 } else {
                     if (detailsEl) detailsEl.textContent = `Google Sheets error: ${error.message}`;
                 }
