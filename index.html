@@ -823,72 +823,7 @@
 
         // ===== GOOGLE API LOADING FUNCTIONS =====
         function loadGoogleAPI() {
-            return new Promise((resolve) => {
-                const cdnOptions = [
-                    'https://apis.google.com/js/api.js',
-                    'https://www.gstatic.com/external_hosted/gapi/gapi.js'
-                ];
-                
-                let attemptCount = 0;
-                
-                function tryLoadScript(url) {
-                    return new Promise((scriptResolve, scriptReject) => {
-                        const script = document.createElement('script');
-                        script.src = url;
-                        script.async = true;
-                        script.defer = true;
-                        
-                        script.onload = async () => {
-                            console.log(`✅ Loaded Google API from: ${url}`);
-                            // Wait for gapi to be fully available
-                            let waitCount = 0;
-                            while (!window.gapi && waitCount < 50) {
-                                await new Promise(r => setTimeout(r, 100));
-                                waitCount++;
-                            }
-                            
-                            if (window.gapi) {
-                                console.log('✅ Google API fully initialized');
-                                scriptResolve(true);
-                            } else {
-                                console.log('❌ Google API failed to initialize');
-                                scriptReject(false);
-                            }
-                        };
-                        
-                        script.onerror = () => {
-                            console.log(`❌ Failed to load from: ${url}`);
-                            scriptReject(false);
-                        };
-                        
-                        // Add timeout
-                        setTimeout(() => {
-                            if (!window.gapi) {
-                                console.log(`⏰ Timeout loading from: ${url}`);
-                                scriptReject(false);
-                            }
-                        }, 15000);
-                        
-                        document.head.appendChild(script);
-                    });
-                }
-                
-                async function tryNextCDN() {
-                    if (attemptCount >= cdnOptions.length) {
-                        console.log('❌ All Google API CDN sources failed');
-                        resolve(false);
-                        return;
-                    }
-                    
-                    try {
-                        await tryLoadScript(cdnOptions[attemptCount]);
-                        resolve(true);
-                    } catch (error) {
-                        attemptCount++;
-                        tryNextCDN();
-                    }
-                }
-                
+            return new Promise((resolve, reject) => {
                 // Check if gapi is already loaded
                 if (window.gapi && window.gapi.load) {
                     console.log('✅ Google API already loaded');
@@ -896,7 +831,42 @@
                     return;
                 }
                 
-                tryNextCDN();
+                // Define the callback function before loading the script
+                window.onGapiLoad = function() {
+                    console.log('✅ Google API loaded and ready');
+                    // Clean up the global callback
+                    delete window.onGapiLoad;
+                    resolve(true);
+                };
+                
+                // Create script with official onload parameter
+                const script = document.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js?onload=onGapiLoad';
+                script.async = true;
+                script.defer = true;
+                
+                script.onerror = () => {
+                    console.log('❌ Failed to load Google API');
+                    delete window.onGapiLoad;
+                    reject(new Error('Failed to load Google API from googleapis.com'));
+                };
+                
+                // Add timeout protection
+                const timeout = setTimeout(() => {
+                    console.log('⏰ Google API load timeout');
+                    delete window.onGapiLoad;
+                    reject(new Error('Google API load timeout'));
+                }, 15000);
+                
+                // Clear timeout when callback fires
+                const originalCallback = window.onGapiLoad;
+                window.onGapiLoad = function() {
+                    clearTimeout(timeout);
+                    originalCallback();
+                };
+                
+                console.log('🔄 Loading Google API...');
+                document.head.appendChild(script);
             });
         }
 
