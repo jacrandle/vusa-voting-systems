@@ -41,7 +41,7 @@
             opacity: 0.9;
         }
 
-        .session-info {
+        .sync-info {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             border-radius: 15px;
@@ -55,10 +55,33 @@
             gap: 10px;
         }
 
+        .sync-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
         .session-selector {
             display: flex;
             gap: 10px;
             align-items: center;
+        }
+
+        .session-selector select {
+            padding: 8px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .session-selector button {
+            padding: 8px 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
         }
 
         .status-indicator {
@@ -68,19 +91,24 @@
             font-size: 14px;
         }
 
-        .status-connected {
-            background: #d4edda;
-            color: #155724;
+        .status-local {
+            background: #e1f5fe;
+            color: #01579b;
         }
 
-        .status-loading {
-            background: #fff3cd;
-            color: #856404;
+        .status-syncing {
+            background: #fff3e0;
+            color: #e65100;
         }
 
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
+        .status-synced {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .status-offline {
+            background: #fce4ec;
+            color: #ad1457;
         }
 
         .controls-grid {
@@ -418,27 +446,13 @@
             transform: translateY(-1px);
         }
 
-        .loading {
+        .seat-display {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
             text-align: center;
-            padding: 40px;
-            color: white;
-            font-size: 18px;
-        }
-
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-left: 10px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+            margin-bottom: 10px;
         }
 
         @media (max-width: 1200px) {
@@ -468,7 +482,7 @@
                 min-width: 100%;
             }
 
-            .session-info {
+            .sync-info {
                 flex-direction: column;
                 text-align: center;
             }
@@ -482,46 +496,49 @@
             background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
         }
 
-        .session-btn {
+        .sync-btn {
             background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        }
-
-        .seat-display {
-            background: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            text-align: center;
-            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading">
-        🚀 Connecting to Supabase database...<br>
-        <small>Testing connection and loading tables...</small>
-    </div>
-
-    <div id="app" class="container" style="display: none;">
+    <div class="container">
         <div class="header">
             <h1>🏛️ Advanced Congressional Voting System</h1>
-            <p>Faction-Based Vote Tracking with Customizable Party Compositions</p>
+            <p>Now powered by Google Sheets - Real-time collaboration!</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-top: 10px; font-size: 0.9em; line-height: 1.4;">
+                <strong>📋 Current Status:</strong><br>
+                ✅ <strong>Spreadsheet Connected:</strong> <a href="https://docs.google.com/spreadsheets/d/1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew/edit" target="_blank" style="color: #fff; text-decoration: underline;">Your Google Sheet</a><br>
+                ✅ <strong>API Key Configured:</strong> Ready to connect to Google Sheets<br>
+                🔄 <strong>Next Step:</strong> Make sure your spreadsheet is shared with "Anyone with the link can edit"<br>
+                🚀 <strong>Ready to test!</strong> The system should now connect to Google Sheets automatically
+            </div>
         </div>
 
-        <div class="session-info">
-            <div class="session-selector">
-                <label for="sessionSelect" style="margin: 0; margin-right: 10px;">Session:</label>
-                <select id="sessionSelect" style="width: 200px;" onchange="loadSession(this.value)">
-                    <option value="">Select a session...</option>
-                </select>
-                <button onclick="createNewSession()" class="session-btn" style="width: 150px;">New Session</button>
+        <div class="sync-info">
+            <div class="sync-selector">
+                <div class="session-selector">
+                    <strong>Session:</strong>
+                    <select id="sessionSelect" onchange="switchSession()">
+                        <option value="default">Default Session</option>
+                        <option value="scenario-1">Scenario 1</option>
+                        <option value="scenario-2">Scenario 2</option>
+                        <option value="custom">Custom Session</option>
+                    </select>
+                    <button onclick="createNewSession()">New</button>
+                    <button onclick="importAllData()" title="Import from file">📁↑</button>
+                    <button onclick="exportAllData()" title="Export to file">📁↓</button>
+                </div>
+                    <div>
+                        <strong>Status:</strong> <span id="connectionDetails">Initializing...</span>
+                    </div>
             </div>
             <div style="display: flex; gap: 15px; align-items: center;">
-                <div id="currentSession" style="font-weight: 600; color: #28a745;">
-                    No session selected
-                </div>
-                <div id="connectionStatus" class="status-indicator status-loading">
-                    Connecting...
+                <button onclick="syncWithDatabase()" class="sync-btn" style="width: 120px;" id="syncBtn">
+                    Sync Now
+                </button>
+                <div id="syncStatus" class="status-indicator status-local">
+                    📱 Local Mode
                 </div>
             </div>
         </div>
@@ -585,7 +602,7 @@
                 <div class="chamber-header">
                     <div class="chamber-title">🏛️ Senate (Weighted Votes)</div>
                     <div style="font-size: 14px; color: #666;">
-                        ⚖️ Weighted by role: Leader 25%, Whip 20%, Caucus Chairs 15%/10%/5%, Senators share remaining 25%
+                        ⚖️ Constrained weighted voting: Base faction weight + leadership bonus, scaled to never exceed party seat total
                     </div>
                 </div>
                 
@@ -630,7 +647,8 @@
                             <span class="party-title">🔴 Republicans</span>
                         </div>
                         <div class="seat-display">
-                            Seats: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
+                            Senators: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
+                            <br><small>Total Weight: <span id="repSenateWeight">0</span></small>
                         </div>
                         <div id="republicanSenators"></div>
                     </div>
@@ -640,7 +658,8 @@
                             <span class="party-title">🔵 Democrats</span>
                         </div>
                         <div class="seat-display">
-                            Seats: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
+                            Senators: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
+                            <br><small>Total Weight: <span id="demSenateWeight">0</span></small>
                         </div>
                         <div id="democratSenators"></div>
                     </div>
@@ -694,7 +713,7 @@
                     <button onclick="clearAllVotes()" class="clear-btn">Clear All Votes</button>
                 </div>
                 <div class="control-group">
-                    <button onclick="reloadCurrentSession()" class="session-btn">Reload Session</button>
+                    <button onclick="resetToDefaults()" class="sync-btn">Reset to Defaults</button>
                 </div>
             </div>
         </div>
@@ -773,16 +792,33 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ===== CONFIGURATION =====
-        // Your Supabase credentials
-        const SUPABASE_URL = 'https://spjvpxbiwfjjvxvltuot.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwanZweGJpd2ZqanZ4dmx0dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNTk5MTYsImV4cCI6MjA2NjczNTkxNn0.vb-VK0klRqcgwQ_6kBC4fs-hezl0P6XxjfODt9DEsck';
+        // ===== GOOGLE SHEETS CONFIGURATION =====
+        // Your Google API Key
+        const GOOGLE_API_KEY = 'AIzaSyBG7opndMaMpXBXEuSv2WmbHfCq9bdZCtk'; // Your API key
+        const SPREADSHEET_ID = '1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew'; // Your spreadsheet
+        
+        // OPTION 2: Service Account Method (More secure, requires server or complex setup)
+        const SERVICE_ACCOUNT_CONFIG = {
+            "client_email": "vusa-ivs@northern-net-212817.iam.gserviceaccount.com",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC4Ecw5fQ1y6BX/\njV5M2VBVza5D9QrrTykPlE87KKvtfjf27J82ONbD1eprtk8z/ZT2yZP5CNbPcXi+\np7z/YyY6+X5xMm7jSYJUjH2xD9QNa/Jw2/+VnErQCHIecCiI12tmb7K+eUaOl0B9\n7kMygsIMZftjtCyPq9wb4NTXecC+0piuNUBKekOMKP9o2nfBlN9DgHgwnaPdoyyB\nGjROjHdaoEOZHow7t+16eAAvqBbi79uh7lsm8QMLdQDeYvDCkVVWN4HuuZLSwHzQ\nCM7zMqmKuBkEqKP1rUx0btWyaOCDGrHZvf1CzJ+uNs0vaXokaqS7V+YP+8Y6ga58\nLKTNWiqbAgMBAAECggEAALTmTwZ58m57hKk7cQprGvymduDxTgz0oPJHHuxgmJeY\nq0MsYif6IiPnc7KMvKvoGEevNei0qLG9Im2rO7g8agbtOL6ljwwmpjLfltiXu9W+\nIr2vwgAQb6bTskfieLbfYS38Eqj7DXs6Q2qkuPgV97gTFGTutBmjfjsMYAkz1huB\nhrPU92TedyKLWAGFt9MyUpuDvvTX+3ELxowDx2XtSm+MRKONktES8+Ugo1hArSRQ\nAD6Q+Lc0R6Bw3KRMnb+/cBI+gdQMD+Zr72H3p7srvdt9bgoG8ByizbWQ8ndRFsa+\ntdejhekJrRq5LXrmF06/j/aj4qZDbh1FGaDP6lwxsQKBgQDsCfWRK4gzqqNFq4R6\n/Etv6MvZeEO158PMw1lbiNRk0zgpUlsbLvP7PFSkiDHDRVdAnykPX6MEJb67S1qT\nCZbNI4EDdOsVDKdVAtkFVyYfuseWp+kKsEe7zz0+t9x71JKkHqVzd8sLli8+QsxM\nvT/4EwV0U6CepVnP8sIVGjJ7qwKBgQDHor7rML/1qfxV088PlI694KYpIW1AgAfz\nQgZJg3fyX/wi551cFM3GR3TSZD+T7D8Kax4uTIQlcaMSZZbxNkU5xIQMMvAPNb/5\n8kFcjvlg9kvjuP9vK2xvOZ2mWpRnl1JuFlD6LXkML0SWl0Jmx2+oeA0FH/48+lC2\n+16SxVWc0QKBgAzIOUkkP1r06aSTNjhmwzsLM0bSkXAfXeYPyh3/2eif25G5SP++\n2i2HxdmnGnLFpYT1WYbgmfZWiO6hlQUTZtwzCQCD61sXdVRQNCpq3sCnH7nT2/Xd\nN/U+ssVbtY/rIgnLMxB+szssZeCMQ34AXZ90gD4dbTxKHgP51HLKGWPDAoGBALU9\ncSrAZWW4X1fkJXW1nymPDAsHR9Jo6c7UwDR5YKnwrk1aDSiN0osSUGK5lGbM8iaZ\nPRs3aDk+Q5fuFu0CIjLh0CfrDrogSBu47dIEEy8OK7OgPnZE6/rGSfO/BEBPxwwe\nwoF+Swje2NwGksgQg7Rk2R0wAHaHokOdTizdbm4hAoGAeOs1SlAVcXiStTYqCEzA\n0lXUWyNmmACwEZlngoIajhP8uKcQNeopmsBzxAOu1Y6694YPThFxIrvBAgT7NQO3\nfNt0MMM1TtMg6wio9unQi/s6YQsZCyvtL3NFSPKPbdFqeml+OA2DIWj1J9ImALW0\nYRrw/iqSXk8BiFDOg13b5jQ=\n-----END PRIVATE KEY-----\n"
+        };
+        
+        // Current method: Using API Key (you need to get this)
+        let useServiceAccount = false; // Set to true to use service account method
+        
+        // Sheet names and ranges
+        const SHEETS_CONFIG = {
+            sessions: { name: 'Sessions', range: 'A:C' },
+            partySeats: { name: 'PartySeats', range: 'A:D' },
+            factions: { name: 'Factions', range: 'A:F' },
+            senators: { name: 'Senators', range: 'A:G' },
+            votes: { name: 'Votes', range: 'A:D' }
+        };
 
-        // Initialize Supabase client
-        let supabase;
+        // Global variables
         let currentSessionId = null;
+        let availableSessions = [];
         let factions = { republican: [], democrat: [] };
         let senators = { republican: [], democrat: [] };
         let votes = {};
@@ -790,580 +826,1271 @@
             republican: { senate: 49, house: 232 },
             democrat: { senate: 50, house: 203 }
         };
+        let isOnline = navigator.onLine;
+        let syncEnabled = false;
+        let gapi;
 
-        // ===== INITIALIZATION =====
-        async function initializeApp() {
-            console.log('🚀 Starting database-first initialization...');
-            
+        // ===== GOOGLE SHEETS API INITIALIZATION =====
+        async function initializeGoogleSheets() {
             try {
-                // Initialize Supabase first
-                console.log('📡 Creating Supabase client...');
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const detailsEl = document.getElementById('connectionDetails');
                 
-                console.log('🔍 Testing database connection...');
-                console.log('- URL:', SUPABASE_URL);
-                console.log('- Key starts with:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+                if (detailsEl) detailsEl.textContent = 'Loading Google Sheets API...';
                 
-                // Test with a longer timeout but show progress
-                updateConnectionStatus('loading');
-                document.getElementById('currentSession').textContent = 'Testing database connection...';
+                // Wait for Google API to load
+                await new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    const checkAPI = () => {
+                        if (window.gapi) {
+                            resolve();
+                        } else if (attempts < 20) {
+                            attempts++;
+                            setTimeout(checkAPI, 250);
+                        } else {
+                            reject(new Error('Google API failed to load'));
+                        }
+                    };
+                    checkAPI();
+                });
                 
-                const { data, error } = await supabase.from('sessions').select('*').limit(1);
+                if (detailsEl) detailsEl.textContent = 'Initializing Google Sheets API...';
                 
-                if (error) {
-                    console.error('❌ Database error:', error);
-                    throw error;
+                // Initialize the API
+                await new Promise((resolve, reject) => {
+                    window.gapi.load('client', {
+                        callback: resolve,
+                        onerror: reject
+                    });
+                });
+                
+                await window.gapi.client.init({
+                    apiKey: GOOGLE_API_KEY,
+                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                });
+                
+                if (detailsEl) detailsEl.textContent = 'Testing Google Sheets connection...';
+                
+                // Test connection by reading spreadsheet metadata
+                const response = await window.gapi.client.sheets.spreadsheets.get({
+                    spreadsheetId: SPREADSHEET_ID
+                });
+                
+                if (!response.result) {
+                    throw new Error('Cannot access spreadsheet - check permissions');
                 }
                 
-                console.log('✅ Database connection successful!');
-                console.log('📊 Found sessions:', data?.length || 0);
+                console.log('✅ Google Sheets connected successfully');
+                console.log('📊 Spreadsheet:', response.result.properties.title);
+                syncEnabled = true;
                 
-                updateConnectionStatus('connected');
-                await loadSessions();
+                // Initialize sheets if they don't exist
+                await initializeSheetStructure();
+                await loadAvailableSessions();
+                updateSyncStatus('synced');
                 
             } catch (error) {
-                console.error('❌ Database connection failed:', error);
-                console.log('🔍 Error details:');
-                console.log('- Error message:', error.message);
-                console.log('- Error type:', error.constructor.name);
-                console.log('- Stack trace:', error.stack);
+                console.error('❌ Google Sheets connection failed:', error);
                 
-                // Show detailed error to user
-                updateConnectionStatus('error');
-                document.getElementById('currentSession').textContent = `Database Error: ${error.message}`;
-                
-                // Add retry option to session selector
-                const sessionSelect = document.getElementById('sessionSelect');
-                sessionSelect.innerHTML = `
-                    <option value="">❌ Database Connection Failed</option>
-                    <option value="retry">🔄 Retry Database Connection</option>
-                `;
-                
-                // Provide specific troubleshooting
-                let troubleshootingMessage = '';
-                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    troubleshootingMessage = `🔍 TROUBLESHOOTING STEPS:
-
-1. CHECK SUPABASE PROJECT STATUS:
-   • Go to https://supabase.com/dashboard
-   • Make sure your project is not paused
-   • Free tier projects auto-pause after 1 week of inactivity
-
-2. VERIFY YOUR CREDENTIALS:
-   • URL: ${SUPABASE_URL}
-   • Check if this URL is correct in your dashboard
-
-3. NETWORK ISSUES:
-   • Check your internet connection
-   • Try refreshing the page
-   • Check if corporate firewall is blocking Supabase`;
-
-                } else if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
-                    troubleshootingMessage = `🔍 TROUBLESHOOTING STEPS:
-
-1. CHECK API KEYS:
-   • Go to Supabase Dashboard → Settings → API
-   • Copy the "anon public" key again
-   • Make sure you're using the PUBLIC key, not service_role
-
-2. VERIFY PROJECT URL:
-   • Ensure URL matches exactly: ${SUPABASE_URL}`;
-
-                } else if (error.message.includes('relation') && error.message.includes('does not exist')) {
-                    troubleshootingMessage = `🔍 TROUBLESHOOTING STEPS:
-
-1. MISSING DATABASE TABLES:
-   • Go to Supabase Dashboard → SQL Editor
-   • Run the table creation SQL provided earlier
-   • Make sure tables exist: factions, senators, faction_votes, senator_votes, party_seats
-
-2. CHECK TABLE PERMISSIONS:
-   • Ensure Row Level Security policies are created
-   • Tables should allow public access for this demo`;
-
+                const detailsEl = document.getElementById('connectionDetails');
+                if (error.message.includes('The caller does not have permission')) {
+                    if (detailsEl) detailsEl.textContent = 'Permission denied - make sure spreadsheet is shared publicly';
+                    console.log('📋 Spreadsheet permission issue:');
+                    console.log('📋 1. Go to your spreadsheet');
+                    console.log('📋 2. Click "Share" button');
+                    console.log('📋 3. Change to "Anyone with the link" → "Editor"');
+                } else if (error.message.includes('API key not valid')) {
+                    if (detailsEl) detailsEl.textContent = 'API key invalid - check Google Cloud Console';
+                    console.log('📋 API key issue - make sure Google Sheets API is enabled');
                 } else {
-                    troubleshootingMessage = `🔍 TROUBLESHOOTING STEPS:
-
-1. CHECK CONSOLE: Look for more detailed error messages
-2. VERIFY SETUP: Ensure Supabase project is active and accessible
-3. TRY MANUAL TEST: Go directly to ${SUPABASE_URL} in your browser`;
+                    if (detailsEl) detailsEl.textContent = `Google Sheets error: ${error.message}`;
                 }
-
-                alert(`❌ DATABASE CONNECTION FAILED
-
-Error: ${error.message}
-
-${troubleshootingMessage}
-
-Need help? Check the browser console (F12) for more details.`);
-            }
-            }
-            
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-        }
-
-        async function testDatabaseInBackground() {
-            console.log('🔍 Testing database connection in background...');
-            
-            try {
-                // Initialize Supabase
-                console.log('📡 Creating Supabase client...');
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                console.log('⏱️ Testing connection with 5 second timeout...');
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Background connection timeout')), 5000)
-                );
+                console.log('📁 Using enhanced local storage with file backup');
+                syncEnabled = false;
+                updateSyncStatus('offline');
                 
-                const testPromise = supabase.from('sessions').select('count').limit(1);
-                
-                const { data, error } = await Promise.race([testPromise, timeoutPromise]);
-                
-                if (error) throw error;
-                
-                console.log('✅ Background database test SUCCESSFUL!');
-                updateConnectionStatus('connected');
-                
-                // Add option to switch to database mode
-                const sessionSelect = document.getElementById('sessionSelect');
-                sessionSelect.innerHTML = `
-                    <option value="">📴 Demo Mode Active</option>
-                    <option value="switch_to_db">✅ Switch to Database Mode</option>
-                `;
-                
-            } catch (error) {
-                console.error('❌ Background database test failed:', error.message);
-                console.log('🔍 Debugging info:');
-                console.log('- Supabase URL:', SUPABASE_URL);
-                console.log('- Network reachable?', navigator.onLine);
-                console.log('- Error type:', error.constructor.name);
-                
-                // Show specific error info
-                if (error.message.includes('timeout')) {
-                    console.log('💡 Diagnosis: Database connection timeout - likely sleeping project or network issues');
-                } else if (error.message.includes('cors')) {
-                    console.log('💡 Diagnosis: CORS error - check Supabase URL and keys');
-                } else if (error.message.includes('fetch')) {
-                    console.log('💡 Diagnosis: Network error - check internet connection');
+                // Fall back to local mode
+                availableSessions = await loadLocalSessions();
+                if (availableSessions.length === 0) {
+                    availableSessions = [{ id: 'local', name: 'Local Session' }];
+                    currentSessionId = 'local';
                 } else {
-                    console.log('💡 Diagnosis: Unknown error - check Supabase project status');
+                    currentSessionId = availableSessions[0].id;
+                }
+                await loadLocalData();
+            }
+        }
+
+        async function initializeSheetStructure() {
+            try {
+                const spreadsheet = await window.gapi.client.sheets.spreadsheets.get({
+                    spreadsheetId: SPREADSHEET_ID
+                });
+                
+                const existingSheets = spreadsheet.result.sheets.map(sheet => sheet.properties.title);
+                const requiredSheets = Object.values(SHEETS_CONFIG).map(config => config.name);
+                
+                // Create missing sheets
+                const requests = [];
+                requiredSheets.forEach(sheetName => {
+                    if (!existingSheets.includes(sheetName)) {
+                        requests.push({
+                            addSheet: {
+                                properties: {
+                                    title: sheetName
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                if (requests.length > 0) {
+                    await window.gapi.client.sheets.spreadsheets.batchUpdate({
+                        spreadsheetId: SPREADSHEET_ID,
+                        resource: { requests }
+                    });
+                    console.log(`📋 Created ${requests.length} missing sheets`);
+                }
+                
+                // Add headers to empty sheets
+                await initializeSheetHeaders();
+                
+            } catch (error) {
+                console.error('Error initializing sheet structure:', error);
+            }
+        }
+
+        async function initializeSheetHeaders() {
+            const headers = {
+                Sessions: ['id', 'name', 'created_at'],
+                PartySeats: ['session_id', 'party', 'senate_seats', 'house_seats'],
+                Factions: ['session_id', 'id', 'name', 'party', 'senate_count', 'house_count'],
+                Senators: ['session_id', 'id', 'name', 'party', 'role', 'faction_id', 'vote_weight'],
+                Votes: ['session_id', 'entity_id', 'entity_type', 'vote_type']
+            };
+            
+            for (const [sheetName, headerRow] of Object.entries(headers)) {
+                try {
+                    // Check if sheet has headers
+                    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: SPREADSHEET_ID,
+                        range: `${sheetName}!A1:Z1`
+                    });
+                    
+                    if (!response.result.values || response.result.values.length === 0) {
+                        // Add headers
+                        await window.gapi.client.sheets.spreadsheets.values.update({
+                            spreadsheetId: SPREADSHEET_ID,
+                            range: `${sheetName}!A1`,
+                            valueInputOption: 'USER_ENTERED',
+                            resource: {
+                                values: [headerRow]
+                            }
+                        });
+                        console.log(`📋 Added headers to ${sheetName}`);
+                    }
+                } catch (error) {
+                    console.log(`Note: Could not check/add headers for ${sheetName}:`, error.message);
                 }
             }
         }
 
-        async function switchToDatabaseMode() {
-            console.log('🔄 Switching to database mode...');
-            updateConnectionStatus('loading');
-            
+        // ===== GOOGLE SHEETS CRUD OPERATIONS =====
+        async function readSheet(sheetName) {
             try {
-                await loadSessions();
-                console.log('✅ Successfully switched to database mode');
+                const response = await window.gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: `${sheetName}!${SHEETS_CONFIG[sheetName].range}`
+                });
+                
+                const values = response.result.values || [];
+                if (values.length <= 1) return []; // No data beyond headers
+                
+                const headers = values[0];
+                return values.slice(1).map(row => {
+                    const obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = row[index] || '';
+                    });
+                    return obj;
+                });
             } catch (error) {
-                console.error('❌ Failed to switch to database mode:', error);
-                alert('Failed to connect to database: ' + error.message);
-                updateConnectionStatus('error');
+                console.error(`Error reading ${sheetName}:`, error);
+                return [];
             }
         }
 
-        // ===== OFFLINE MODE =====
-        function initializeOfflineMode() {
-            console.log('⚡ INSTANT OFFLINE MODE ACTIVATED');
-            currentSessionId = 'offline';
+        async function writeToSheet(sheetName, data) {
+            try {
+                if (!Array.isArray(data) || data.length === 0) return;
+                
+                // Get headers
+                const headers = Object.keys(data[0]);
+                
+                // Convert objects to arrays
+                const values = data.map(obj => headers.map(header => obj[header] || ''));
+                
+                // Clear existing data (keep headers)
+                await window.gapi.client.sheets.spreadsheets.values.clear({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: `${sheetName}!A2:Z`
+                });
+                
+                // Write new data
+                if (values.length > 0) {
+                    await window.gapi.client.sheets.spreadsheets.values.update({
+                        spreadsheetId: SPREADSHEET_ID,
+                        range: `${sheetName}!A2`,
+                        valueInputOption: 'USER_ENTERED',
+                        resource: { values }
+                    });
+                }
+                
+                return true;
+            } catch (error) {
+                console.error(`Error writing to ${sheetName}:`, error);
+                return false;
+            }
+        }
+
+        async function appendToSheet(sheetName, data) {
+            try {
+                if (!data) return;
+                
+                const headers = Object.keys(data);
+                const values = [headers.map(header => data[header] || '')];
+                
+                await window.gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: `${sheetName}!A:A`,
+                    valueInputOption: 'USER_ENTERED',
+                    insertDataOption: 'INSERT_ROWS',
+                    resource: { values }
+                });
+                
+                return true;
+            } catch (error) {
+                console.error(`Error appending to ${sheetName}:`, error);
+                return false;
+            }
+        }
+
+        async function loadAvailableSessions() {
+            try {
+                const sessions = await readSheet('sessions');
+                availableSessions = sessions.map(session => ({
+                    id: session.id,
+                    name: session.name,
+                    created_at: session.created_at
+                }));
+                
+                if (availableSessions.length === 0) {
+                    console.log('📦 No sessions found, creating default session...');
+                    const defaultSessionId = await createSession('Default Session');
+                    currentSessionId = defaultSessionId;
+                } else {
+                    currentSessionId = availableSessions[0].id;
+                }
+                
+                updateSessionSelector();
+                console.log(`📋 Loaded ${availableSessions.length} session(s) from Google Sheets`);
+                
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                throw error;
+            }
+        }
+
+        async function createSession(sessionName) {
+            try {
+                const sessionId = `session_${Date.now()}`;
+                const newSession = {
+                    id: sessionId,
+                    name: sessionName,
+                    created_at: new Date().toISOString()
+                };
+                
+                await appendToSheet('sessions', newSession);
+                
+                // Initialize default data for new session
+                await initializeSessionDefaults(sessionId);
+                
+                availableSessions.push(newSession);
+                currentSessionId = sessionId;
+                updateSessionSelector();
+                
+                console.log(`✅ Created session: ${sessionName}`);
+                return sessionId;
+                
+            } catch (error) {
+                console.error('Error creating session:', error);
+                throw error;
+            }
+        }
+
+        async function initializeSessionDefaults(sessionId) {
+            try {
+                // Add default party seats
+                const partySeatsData = [
+                    { session_id: sessionId, party: 'republican', senate_seats: 49, house_seats: 232 },
+                    { session_id: sessionId, party: 'democrat', senate_seats: 50, house_seats: 203 }
+                ];
+                
+                for (const seatData of partySeatsData) {
+                    await appendToSheet('partySeats', seatData);
+                }
+                
+                // Add default factions
+                const factionsData = [
+                    { session_id: sessionId, id: `faction_${Date.now()}_1`, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
+                    { session_id: sessionId, id: `faction_${Date.now()}_2`, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
+                    { session_id: sessionId, id: `faction_${Date.now()}_3`, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 },
+                    { session_id: sessionId, id: `faction_${Date.now()}_4`, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
+                    { session_id: sessionId, id: `faction_${Date.now()}_5`, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
+                    { session_id: sessionId, id: `faction_${Date.now()}_6`, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
+                ];
+                
+                for (const factionData of factionsData) {
+                    await appendToSheet('factions', factionData);
+                }
+                
+                // Add default senators
+                const senatorsData = [
+                    { session_id: sessionId, id: `senator_${Date.now()}_1`, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: factionsData[2].id, vote_weight: 12 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_2`, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: factionsData[2].id, vote_weight: 10 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_3`, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: factionsData[0].id, vote_weight: 7 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_4`, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: factionsData[1].id, vote_weight: 5 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_5`, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: factionsData[5].id, vote_weight: 13 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_6`, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: factionsData[5].id, vote_weight: 10 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_7`, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: factionsData[3].id, vote_weight: 8 },
+                    { session_id: sessionId, id: `senator_${Date.now()}_8`, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: factionsData[4].id, vote_weight: 5 }
+                ];
+                
+                for (const senatorData of senatorsData) {
+                    await appendToSheet('senators', senatorData);
+                }
+                
+            } catch (error) {
+                console.error('Error initializing session defaults:', error);
+            }
+        }
+
+        async function loadSessionFromSheets(sessionId, showProgress = true) {
+            if (!syncEnabled) {
+                await loadLocalData();
+                return;
+            }
             
-            // Load comprehensive sample data for offline testing
+            try {
+                if (showProgress) updateSyncStatus('syncing');
+                
+                // Load party seats
+                const allPartySeats = await readSheet('partySeats');
+                const sessionPartySeats = allPartySeats.filter(ps => ps.session_id === sessionId);
+                
+                // Load factions
+                const allFactions = await readSheet('factions');
+                const sessionFactions = allFactions.filter(f => f.session_id === sessionId);
+                
+                // Load senators
+                const allSenators = await readSheet('senators');
+                const sessionSenators = allSenators.filter(s => s.session_id === sessionId);
+                
+                // Load votes
+                const allVotes = await readSheet('votes');
+                const sessionVotes = allVotes.filter(v => v.session_id === sessionId);
+                
+                // Transform data to local format
+                partySeats = {
+                    republican: { senate: 49, house: 232 },
+                    democrat: { senate: 50, house: 203 }
+                };
+                
+                sessionPartySeats.forEach(ps => {
+                    partySeats[ps.party] = {
+                        senate: parseInt(ps.senate_seats) || 0,
+                        house: parseInt(ps.house_seats) || 0
+                    };
+                });
+                
+                factions = { republican: [], democrat: [] };
+                sessionFactions.forEach(f => {
+                    factions[f.party].push({
+                        id: f.id,
+                        name: f.name,
+                        party: f.party,
+                        senate_count: parseInt(f.senate_count) || 0,
+                        house_count: parseInt(f.house_count) || 0
+                    });
+                });
+                
+                senators = { republican: [], democrat: [] };
+                sessionSenators.forEach(s => {
+                    senators[s.party].push({
+                        id: s.id,
+                        name: s.name,
+                        party: s.party,
+                        role: s.role,
+                        faction_id: s.faction_id || null
+                    });
+                });
+                
+                votes = {};
+                sessionVotes.forEach(v => {
+                    if (v.vote_type && v.vote_type !== '') {
+                        votes[v.entity_id] = v.vote_type;
+                    }
+                });
+                
+                clearWeightCache();
+                updatePartySeatsDisplay();
+                updateFactionSelectors();
+                renderAll();
+                updateResults();
+                
+                if (showProgress) {
+                    updateSyncStatus('synced');
+                    const detailsEl = document.getElementById('connectionDetails');
+                    if (detailsEl) {
+                        detailsEl.textContent = `Loaded from Google Sheets at ${new Date().toLocaleTimeString()}`;
+                    }
+                }
+                
+                console.log(`📊 Session loaded from Google Sheets: ${sessionId}`);
+                
+            } catch (error) {
+                console.error('Error loading session from Google Sheets:', error);
+                if (showProgress) updateSyncStatus('offline');
+                throw error;
+            }
+        }
+
+        async function saveSessionToSheets() {
+            if (!syncEnabled || !currentSessionId) return;
+            
+            try {
+                updateSyncStatus('syncing');
+                
+                // Get all current data from sheets
+                const allPartySeats = await readSheet('partySeats');
+                const allFactions = await readSheet('factions');
+                const allSenators = await readSheet('senators');
+                const allVotes = await readSheet('votes');
+                
+                // Update party seats
+                const updatedPartySeats = allPartySeats.filter(ps => ps.session_id !== currentSessionId);
+                Object.entries(partySeats).forEach(([party, seats]) => {
+                    updatedPartySeats.push({
+                        session_id: currentSessionId,
+                        party: party,
+                        senate_seats: seats.senate,
+                        house_seats: seats.house
+                    });
+                });
+                await writeToSheet('partySeats', updatedPartySeats);
+                
+                // Update factions
+                const updatedFactions = allFactions.filter(f => f.session_id !== currentSessionId);
+                Object.values(factions).flat().forEach(faction => {
+                    updatedFactions.push({
+                        session_id: currentSessionId,
+                        id: faction.id,
+                        name: faction.name,
+                        party: faction.party,
+                        senate_count: faction.senate_count,
+                        house_count: faction.house_count
+                    });
+                });
+                await writeToSheet('factions', updatedFactions);
+                
+                // Update senators
+                const updatedSenators = allSenators.filter(s => s.session_id !== currentSessionId);
+                Object.values(senators).flat().forEach(senator => {
+                    const weights = calculateAllPartyWeights(senator.party);
+                    const voteWeight = weights[senator.id] || 1;
+                    
+                    updatedSenators.push({
+                        session_id: currentSessionId,
+                        id: senator.id,
+                        name: senator.name,
+                        party: senator.party,
+                        role: senator.role,
+                        faction_id: senator.faction_id || '',
+                        vote_weight: voteWeight
+                    });
+                });
+                await writeToSheet('senators', updatedSenators);
+                
+                // Update votes
+                const updatedVotes = allVotes.filter(v => v.session_id !== currentSessionId);
+                Object.entries(votes).forEach(([entityId, voteType]) => {
+                    // Determine entity type
+                    let entityType = 'faction';
+                    for (const partySenators of Object.values(senators)) {
+                        if (partySenators.some(s => s.id === entityId)) {
+                            entityType = 'senator';
+                            break;
+                        }
+                    }
+                    
+                    updatedVotes.push({
+                        session_id: currentSessionId,
+                        entity_id: entityId,
+                        entity_type: entityType,
+                        vote_type: voteType
+                    });
+                });
+                await writeToSheet('votes', updatedVotes);
+                
+                updateSyncStatus('synced');
+                const detailsEl = document.getElementById('connectionDetails');
+                if (detailsEl) {
+                    detailsEl.textContent = `Saved to Google Sheets at ${new Date().toLocaleTimeString()}`;
+                }
+                console.log('💾 Session saved to Google Sheets');
+                
+            } catch (error) {
+                console.error('Error saving to Google Sheets:', error);
+                updateSyncStatus('offline');
+                throw error;
+            }
+        }
+
+        async function initializeSessionDefaults(sessionId) {
+            try {
+                // Insert default party seats
+                await window.supabaseClient.from('party_seats').insert([
+                    { session_id: sessionId, party: 'republican', senate_seats: 49, house_seats: 232 },
+                    { session_id: sessionId, party: 'democrat', senate_seats: 50, house_seats: 203 }
+                ]);
+                
+                // Insert default factions
+                const { data: factionData } = await window.supabaseClient.from('factions').insert([
+                    { session_id: sessionId, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
+                    { session_id: sessionId, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
+                    { session_id: sessionId, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 },
+                    { session_id: sessionId, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
+                    { session_id: sessionId, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
+                    { session_id: sessionId, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
+                ]).select();
+                
+                // Insert default senators with faction references
+                if (factionData && factionData.length >= 6) {
+                    await window.supabaseClient.from('senators').insert([
+                        { session_id: sessionId, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: factionData[2].id },
+                        { session_id: sessionId, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: factionData[2].id },
+                        { session_id: sessionId, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: factionData[0].id },
+                        { session_id: sessionId, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: factionData[1].id },
+                        { session_id: sessionId, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: factionData[5].id },
+                        { session_id: sessionId, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: factionData[5].id },
+                        { session_id: sessionId, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: factionData[3].id },
+                        { session_id: sessionId, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: factionData[4].id }
+                    ]);
+                }
+                
+            } catch (error) {
+                console.error('Error initializing session defaults:', error);
+            }
+        }
+
+        function setupRealtimeSubscriptions() {
+            if (!syncEnabled) return;
+            
+            // Subscribe to changes in current session
+            window.supabaseClient
+                .channel('session_changes')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'party_seats', filter: `session_id=eq.${currentSessionId}` },
+                    (payload) => handleRealtimeUpdate('party_seats', payload))
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'factions', filter: `session_id=eq.${currentSessionId}` },
+                    (payload) => handleRealtimeUpdate('factions', payload))
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'senators', filter: `session_id=eq.${currentSessionId}` },
+                    (payload) => handleRealtimeUpdate('senators', payload))
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'votes', filter: `session_id=eq.${currentSessionId}` },
+                    (payload) => handleRealtimeUpdate('votes', payload))
+                .subscribe();
+        }
+
+        function handleRealtimeUpdate(table, payload) {
+            console.log(`🔄 Real-time update received for ${table}:`, payload);
+            
+            // Debounce rapid updates
+            clearTimeout(window.realtimeDebounce);
+            window.realtimeDebounce = setTimeout(async () => {
+                await loadSessionFromDatabase(currentSessionId, false);
+            }, 500);
+        }
+        // ===== SESSION MANAGEMENT =====
+        async function switchSession() {
+            const newSessionId = document.getElementById('sessionSelect').value;
+            
+            if (newSessionId === currentSessionId) return;
+            
+            // Save current session
+            if (syncEnabled) {
+                await saveSessionToDatabase();
+            } else {
+                saveToLocalStorage();
+            }
+            
+            currentSessionId = newSessionId;
+            
+            if (syncEnabled) {
+                await loadSessionFromDatabase(currentSessionId);
+            } else {
+                await loadLocalData();
+            }
+            
+            console.log(`🔄 Switched to session: ${currentSessionId}`);
+        }
+
+        async function createNewSession() {
+            const name = prompt('Enter new session name:');
+            if (!name || name.trim() === '') return;
+            
+            const sessionName = name.trim();
+            
+            try {
+                if (syncEnabled) {
+                    await createSession(sessionName);
+                    await loadSessionFromDatabase(currentSessionId);
+                } else {
+                    // Enhanced local mode
+                    await createLocalSession(sessionName);
+                }
+                
+                updateSessionSelector();
+                document.getElementById('sessionSelect').value = currentSessionId;
+                renderAll();
+                updateResults();
+                
+            } catch (error) {
+                alert('Error creating session: ' + error.message);
+            }
+        }
+
+        function updateSessionSelector() {
+            const select = document.getElementById('sessionSelect');
+            select.innerHTML = '';
+            
+            availableSessions.forEach(session => {
+                const option = document.createElement('option');
+                option.value = session.id;
+                option.textContent = session.name;
+                select.appendChild(option);
+            });
+            
+            select.value = currentSessionId;
+        }
+
+        async function loadSessionFromDatabase(sessionId, showProgress = true) {
+            if (!syncEnabled) {
+                await loadLocalData();
+                return;
+            }
+            
+            try {
+                if (showProgress) updateSyncStatus('syncing');
+                
+                // Load party seats
+                const { data: partySeatsData } = await window.supabaseClient
+                    .from('party_seats')
+                    .select('*')
+                    .eq('session_id', sessionId);
+                
+                // Load factions
+                const { data: factionsData } = await window.supabaseClient
+                    .from('factions')
+                    .select('*')
+                    .eq('session_id', sessionId)
+                    .order('created_at');
+                
+                // Load senators
+                const { data: senatorsData } = await window.supabaseClient
+                    .from('senators')
+                    .select('*')
+                    .eq('session_id', sessionId)
+                    .order('created_at');
+                
+                // Load votes
+                const { data: votesData } = await window.supabaseClient
+                    .from('votes')
+                    .select('*')
+                    .eq('session_id', sessionId);
+                
+                // Transform data to local format
+                partySeats = {
+                    republican: { senate: 49, house: 232 },
+                    democrat: { senate: 50, house: 203 }
+                };
+                
+                if (partySeatsData) {
+                    partySeatsData.forEach(ps => {
+                        partySeats[ps.party] = {
+                            senate: ps.senate_seats,
+                            house: ps.house_seats
+                        };
+                    });
+                }
+                
+                factions = { republican: [], democrat: [] };
+                if (factionsData) {
+                    factionsData.forEach(f => {
+                        factions[f.party].push({
+                            id: f.id,
+                            name: f.name,
+                            party: f.party,
+                            senate_count: f.senate_count,
+                            house_count: f.house_count
+                        });
+                    });
+                }
+                
+                senators = { republican: [], democrat: [] };
+                if (senatorsData) {
+                    senatorsData.forEach(s => {
+                        senators[s.party].push({
+                            id: s.id,
+                            name: s.name,
+                            party: s.party,
+                            role: s.role,
+                            faction_id: s.faction_id
+                        });
+                    });
+                }
+                
+                votes = {};
+                if (votesData) {
+                    votesData.forEach(v => {
+                        if (v.vote_type) {
+                            votes[v.entity_id] = v.vote_type;
+                        }
+                    });
+                }
+                
+                clearWeightCache();
+                updatePartySeatsDisplay();
+                updateFactionSelectors();
+                renderAll();
+                updateResults();
+                
+                if (showProgress) {
+                    updateSyncStatus('synced');
+                    const detailsEl = document.getElementById('connectionDetails');
+                    if (detailsEl) {
+                        detailsEl.textContent = `Database loaded at ${new Date().toLocaleTimeString()}`;
+                    }
+                }
+                
+                console.log(`📱 Session loaded from database: ${sessionId}`);
+                
+            } catch (error) {
+                console.error('Error loading session from database:', error);
+                if (showProgress) updateSyncStatus('offline');
+                throw error;
+            }
+        }
+
+        async function saveSessionToDatabase() {
+            if (!syncEnabled || !currentSessionId) return;
+            
+            try {
+                updateSyncStatus('syncing');
+                
+                // Save party seats
+                for (const [party, seats] of Object.entries(partySeats)) {
+                    await window.supabaseClient
+                        .from('party_seats')
+                        .upsert({
+                            session_id: currentSessionId,
+                            party: party,
+                            senate_seats: seats.senate,
+                            house_seats: seats.house,
+                            updated_at: new Date().toISOString()
+                        });
+                }
+                
+                // Save factions (with conflict resolution)
+                for (const [party, partyFactions] of Object.entries(factions)) {
+                    for (const faction of partyFactions) {
+                        if (faction.id.startsWith('temp_') || !faction.id.includes('-')) {
+                            // New faction, insert
+                            const { data } = await window.supabaseClient
+                                .from('factions')
+                                .insert({
+                                    session_id: currentSessionId,
+                                    name: faction.name,
+                                    party: faction.party,
+                                    senate_count: faction.senate_count,
+                                    house_count: faction.house_count
+                                })
+                                .select()
+                                .single();
+                            
+                            if (data) faction.id = data.id;
+                        } else {
+                            // Existing faction, update
+                            await window.supabaseClient
+                                .from('factions')
+                                .update({
+                                    name: faction.name,
+                                    senate_count: faction.senate_count,
+                                    house_count: faction.house_count,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', faction.id);
+                        }
+                    }
+                }
+                
+                // Save senators
+                for (const [party, partySenators] of Object.entries(senators)) {
+                    for (const senator of partySenators) {
+                        const weights = calculateAllPartyWeights(party);
+                        const voteWeight = weights[senator.id] || 1;
+                        
+                        if (senator.id.startsWith('temp_') || !senator.id.includes('-')) {
+                            // New senator, insert
+                            const { data } = await window.supabaseClient
+                                .from('senators')
+                                .insert({
+                                    session_id: currentSessionId,
+                                    name: senator.name,
+                                    party: senator.party,
+                                    role: senator.role,
+                                    faction_id: senator.faction_id,
+                                    vote_weight: voteWeight
+                                })
+                                .select()
+                                .single();
+                            
+                            if (data) senator.id = data.id;
+                        } else {
+                            // Existing senator, update
+                            await window.supabaseClient
+                                .from('senators')
+                                .update({
+                                    name: senator.name,
+                                    role: senator.role,
+                                    faction_id: senator.faction_id,
+                                    vote_weight: voteWeight,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', senator.id);
+                        }
+                    }
+                }
+                
+                // Save votes
+                for (const [entityId, voteType] of Object.entries(votes)) {
+                    // Determine entity type
+                    let entityType = 'faction';
+                    for (const partySenators of Object.values(senators)) {
+                        if (partySenators.some(s => s.id === entityId)) {
+                            entityType = 'senator';
+                            break;
+                        }
+                    }
+                    
+                    await window.supabaseClient
+                        .from('votes')
+                        .upsert({
+                            session_id: currentSessionId,
+                            entity_id: entityId,
+                            entity_type: entityType,
+                            vote_type: voteType,
+                            updated_at: new Date().toISOString()
+                        });
+                }
+                
+                updateSyncStatus('synced');
+                const detailsEl = document.getElementById('connectionDetails');
+                if (detailsEl) {
+                    detailsEl.textContent = `Saved to database at ${new Date().toLocaleTimeString()}`;
+                }
+                console.log('💾 Session saved to database');
+                
+            } catch (error) {
+                console.error('Error saving to database:', error);
+                updateSyncStatus('offline');
+                throw error;
+            }
+        }
+
+        // ===== ENHANCED LOCAL STORAGE =====
+        async function loadLocalSessions() {
+            try {
+                const stored = localStorage.getItem('votingSystem_sessions');
+                if (stored) {
+                    return JSON.parse(stored);
+                }
+                return [];
+            } catch (error) {
+                console.error('Error loading local sessions:', error);
+                return [];
+            }
+        }
+
+        function saveLocalSessions() {
+            try {
+                localStorage.setItem('votingSystem_sessions', JSON.stringify(availableSessions));
+            } catch (error) {
+                console.error('Error saving local sessions:', error);
+            }
+        }
+
+        async function createLocalSession(sessionName) {
+            const sessionId = `local_${Date.now()}`;
+            const newSession = {
+                id: sessionId,
+                name: sessionName,
+                created_at: new Date().toISOString()
+            };
+            
+            availableSessions.push(newSession);
+            saveLocalSessions();
+            
+            // Initialize with default data
+            currentSessionId = sessionId;
+            initializeDefaultData();
+            saveToLocalStorage();
+            
+            return sessionId;
+        }
+
+        function exportAllData() {
+            const exportData = {
+                sessions: availableSessions,
+                sessionData: {}
+            };
+            
+            // Export all session data
+            availableSessions.forEach(session => {
+                const stored = localStorage.getItem(`votingSystem_${session.id}`);
+                if (stored) {
+                    exportData.sessionData[session.id] = JSON.parse(stored);
+                }
+            });
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `voting_system_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('📁 Exported all data to file');
+        }
+
+        // ===== FALLBACK LOCAL STORAGE FUNCTIONS =====
+        async function loadLocalData() {
+            try {
+                const stored = localStorage.getItem(`votingSystem_${currentSessionId}`);
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    factions = data.factions || { republican: [], democrat: [] };
+                    senators = data.senators || { republican: [], democrat: [] };
+                    votes = data.votes || {};
+                    partySeats = data.partySeats || {
+                        republican: { senate: 49, house: 232 },
+                        democrat: { senate: 50, house: 203 }
+                    };
+                    
+                    // Safely update connection details
+                    const detailsEl = document.getElementById('connectionDetails');
+                    if (detailsEl && data.lastSaved) {
+                        detailsEl.textContent = `Local data from ${new Date(data.lastSaved).toLocaleString()}`;
+                    } else if (detailsEl) {
+                        detailsEl.textContent = 'Using enhanced local storage with file backup';
+                    }
+                } else {
+                    initializeDefaultData();
+                    const detailsEl = document.getElementById('connectionDetails');
+                    if (detailsEl) {
+                        detailsEl.textContent = 'Initialized with default data - use 📁↓ to backup';
+                    }
+                }
+                
+                clearWeightCache();
+                updatePartySeatsDisplay();
+                updateFactionSelectors();
+                renderAll();
+                updateResults();
+                
+                console.log('📱 Local data loaded successfully');
+                
+            } catch (error) {
+                console.error('Error loading local data:', error);
+                initializeDefaultData();
+                const detailsEl = document.getElementById('connectionDetails');
+                if (detailsEl) {
+                    detailsEl.textContent = 'Error loading data, using defaults';
+                }
+            }
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                factions,
+                senators,
+                votes,
+                partySeats,
+                lastSaved: new Date().toISOString()
+            };
+            
+            try {
+                localStorage.setItem(`votingSystem_${currentSessionId}`, JSON.stringify(data));
+                saveLocalSessions(); // Also save session list
+                
+                const detailsEl = document.getElementById('connectionDetails');
+                if (detailsEl) {
+                    detailsEl.textContent = `Saved locally at ${new Date().toLocaleTimeString()} - use 📁↓ to backup`;
+                }
+                console.log('💾 Data saved to localStorage');
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+        }
+
+        function importAllData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const text = await file.text();
+                    const importData = JSON.parse(text);
+                    
+                    if (importData.sessions && importData.sessionData) {
+                        // Import sessions
+                        availableSessions = importData.sessions;
+                        saveLocalSessions();
+                        
+                        // Import session data
+                        Object.entries(importData.sessionData).forEach(([sessionId, data]) => {
+                            localStorage.setItem(`votingSystem_${sessionId}`, JSON.stringify(data));
+                        });
+                        
+                        // Switch to first imported session
+                        if (availableSessions.length > 0) {
+                            currentSessionId = availableSessions[0].id;
+                            await loadLocalData();
+                            updateSessionSelector();
+                        }
+                        
+                        const detailsEl = document.getElementById('connectionDetails');
+                        if (detailsEl) {
+                            detailsEl.textContent = `Imported ${availableSessions.length} sessions from file`;
+                        }
+                        
+                        console.log('📁 Imported all data from file');
+                        alert('Data imported successfully!');
+                    } else {
+                        throw new Error('Invalid file format');
+                    }
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('Error importing file: ' + error.message);
+                }
+            };
+            
+            input.click();
+        }
+        async function loadLocalData() {
+            try {
+                const stored = localStorage.getItem(`votingSystem_${currentSessionId}`);
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    factions = data.factions || { republican: [], democrat: [] };
+                    senators = data.senators || { republican: [], democrat: [] };
+                    votes = data.votes || {};
+                    partySeats = data.partySeats || {
+                        republican: { senate: 49, house: 232 },
+                        democrat: { senate: 50, house: 203 }
+                    };
+                    
+                    // Safely update connection details
+                    const detailsEl = document.getElementById('connectionDetails');
+                    if (detailsEl && data.lastSaved) {
+                        detailsEl.textContent = `Local data from ${new Date(data.lastSaved).toLocaleString()}`;
+                    } else if (detailsEl) {
+                        detailsEl.textContent = 'Using local storage (offline mode)';
+                    }
+                } else {
+                    initializeDefaultData();
+                    const detailsEl = document.getElementById('connectionDetails');
+                    if (detailsEl) {
+                        detailsEl.textContent = 'Initialized with default data (offline mode)';
+                    }
+                }
+                
+                clearWeightCache();
+                updatePartySeatsDisplay();
+                updateFactionSelectors();
+                renderAll();
+                updateResults();
+                
+                console.log('📱 Local data loaded successfully');
+                
+            } catch (error) {
+                console.error('Error loading local data:', error);
+                initializeDefaultData();
+                const detailsEl = document.getElementById('connectionDetails');
+                if (detailsEl) {
+                    detailsEl.textContent = 'Error loading data, using defaults (offline mode)';
+                }
+            }
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                factions,
+                senators,
+                votes,
+                partySeats,
+                lastSaved: new Date().toISOString()
+            };
+            
+            try {
+                localStorage.setItem(`votingSystem_${currentSessionId}`, JSON.stringify(data));
+                const detailsEl = document.getElementById('connectionDetails');
+                if (detailsEl) {
+                    detailsEl.textContent = `Saved locally at ${new Date().toLocaleTimeString()}`;
+                }
+                console.log('💾 Data saved to localStorage');
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+        }
+
+        function initializeDefaultData() {
             factions = {
                 republican: [
-                    { id: 1, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
-                    { id: 2, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
-                    { id: 3, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 }
+                    { id: Date.now() + 1, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
+                    { id: Date.now() + 2, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
+                    { id: Date.now() + 3, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 }
                 ],
                 democrat: [
-                    { id: 4, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
-                    { id: 5, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
-                    { id: 6, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
+                    { id: Date.now() + 4, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
+                    { id: Date.now() + 5, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
+                    { id: Date.now() + 6, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
                 ]
             };
             
             senators = {
                 republican: [
-                    { id: 11, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: 3 },
-                    { id: 12, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: 3 },
-                    { id: 13, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: 1 },
-                    { id: 14, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: 2 },
-                    { id: 15, name: 'Rand Paul (R-KY)', party: 'republican', role: 'senator', faction_id: 1 },
-                    { id: 16, name: 'Lisa Murkowski (R-AK)', party: 'republican', role: 'senator', faction_id: 2 }
+                    { id: Date.now() + 11, name: 'Mitch McConnell (R-KY)', party: 'republican', role: 'party_leader', faction_id: Date.now() + 3 },
+                    { id: Date.now() + 12, name: 'John Thune (R-SD)', party: 'republican', role: 'party_whip', faction_id: Date.now() + 3 },
+                    { id: Date.now() + 13, name: 'Ted Cruz (R-TX)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 1 },
+                    { id: Date.now() + 14, name: 'Susan Collins (R-ME)', party: 'republican', role: 'caucus_chair', faction_id: Date.now() + 2 }
                 ],
                 democrat: [
-                    { id: 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: 6 },
-                    { id: 22, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: 6 },
-                    { id: 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: 4 },
-                    { id: 24, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: 5 },
-                    { id: 25, name: 'Elizabeth Warren (D-MA)', party: 'democrat', role: 'senator', faction_id: 4 },
-                    { id: 26, name: 'Jon Tester (D-MT)', party: 'democrat', role: 'senator', faction_id: 5 }
+                    { id: Date.now() + 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', role: 'party_leader', faction_id: Date.now() + 6 },
+                    { id: Date.now() + 22, name: 'Dick Durbin (D-IL)', party: 'democrat', role: 'party_whip', faction_id: Date.now() + 6 },
+                    { id: Date.now() + 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 4 },
+                    { id: Date.now() + 24, name: 'Joe Manchin (D-WV)', party: 'democrat', role: 'caucus_chair', faction_id: Date.now() + 5 }
                 ]
             };
             
             votes = {};
-            
-            // Initialize party seats for offline mode
             partySeats = {
                 republican: { senate: 49, house: 232 },
                 democrat: { senate: 50, house: 203 }
             };
             
-            // Set current session display
-            document.getElementById('currentSession').textContent = 'Active: Instant Demo Mode ⚡ (Database testing in background...)';
-            updateConnectionStatus('loading');
-            
-            // Initialize session selector
-            const sessionSelect = document.getElementById('sessionSelect');
-            sessionSelect.innerHTML = `
-                <option value="">⚡ Instant Demo Mode Active</option>
-                <option value="retry">🔄 Force Database Connection Test</option>
-            `;
-            
-            updateFactionSelectors();
-            updatePartySeatsDisplay();
-            renderAll();
-            updateResults();
-            
-            console.log('✅ INSTANT MODE READY! Full weighted voting system loaded:');
-            console.log('📊 Leadership with vote weights:');
-            console.log('  🔴 McConnell (R-Leader): 12.25 votes (25% of 49)');
-            console.log('  🔵 Schumer (D-Leader): 12.5 votes (25% of 50)');
-            console.log('  🔴 Cruz (R-Caucus Chair): 7.35 votes (15% of 49)');
-            console.log('  🔵 Sanders (D-Caucus Chair): 7.5 votes (15% of 50)');
-            console.log('🎯 Click any vote button to test weighted voting!');
+            clearWeightCache(); // Clear weights when initializing defaults
         }
 
-        // Make initializeOfflineMode available globally for the skip button
-        window.initializeOfflineMode = initializeOfflineMode;
-
-        function updateConnectionStatus(status) {
-            const statusEl = document.getElementById('connectionStatus');
-            statusEl.className = 'status-indicator status-' + status;
+        function updateSyncStatus(status) {
+            const statusEl = document.getElementById('syncStatus');
+            const syncBtn = document.getElementById('syncBtn');
+            const detailsEl = document.getElementById('connectionDetails');
+            
+            if (statusEl) {
+                statusEl.className = 'status-indicator status-' + status;
+            }
             
             switch(status) {
-                case 'connected':
-                    statusEl.textContent = '✅ Connected';
-                    break;
-                case 'loading':
-                    statusEl.textContent = '⏳ Loading...';
-                    break;
-                case 'error':
-                    statusEl.textContent = '❌ Disconnected';
-                    break;
-            }
-        }
-
-        async function loadSessions() {
-            try {
-                console.log('📋 Loading sessions from database...');
-                const { data, error } = await supabase
-                    .from('sessions')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) {
-                    console.error('Error loading sessions:', error);
-                    throw error;
-                }
-                
-                console.log('✅ Sessions loaded:', data?.length || 0);
-                
-                const select = document.getElementById('sessionSelect');
-                select.innerHTML = '<option value="">Select a session...</option>';
-                
-                if (data && data.length > 0) {
-                    data.forEach(session => {
-                        const option = document.createElement('option');
-                        option.value = session.id;
-                        option.textContent = `${session.name} (${new Date(session.created_at).toLocaleDateString()})`;
-                        select.appendChild(option);
-                    });
-                    
-                    // Auto-select the most recent session
-                    select.value = data[0].id;
-                    await loadSession(data[0].id);
-                } else {
-                    console.log('⚠️ No sessions found in database');
-                    document.getElementById('currentSession').textContent = 'No sessions found - Create a new session';
-                }
-                
-            } catch (error) {
-                console.error('Error loading sessions:', error);
-                alert('Failed to load sessions: ' + error.message);
-            }
-        }
-
-        async function createNewSession() {
-            const name = prompt('Enter session name:');
-            if (!name) return;
-            
-            try {
-                const { data, error } = await supabase
-                    .from('sessions')
-                    .insert([{ name: name }])
-                    .select();
-                
-                if (error) throw error;
-                
-                await loadSessions();
-                document.getElementById('sessionSelect').value = data[0].id;
-                await loadSession(data[0].id);
-                
-            } catch (error) {
-                console.error('Error creating session:', error);
-                alert('Failed to create session');
-            }
-        }
-
-        async function loadSession(sessionId) {
-            if (sessionId === 'retry') {
-                // User wants to retry database connection
-                console.log('🔄 Retrying database connection...');
-                document.getElementById('currentSession').textContent = 'Retrying connection...';
-                updateConnectionStatus('loading');
-                
-                // Reset and try again
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-                return;
-            }
-            
-            if (!sessionId) {
-                console.log('No session ID provided');
-                return;
-            }
-            
-            console.log('📂 Loading session:', sessionId);
-            currentSessionId = sessionId;
-            updateConnectionStatus('loading');
-            
-            try {
-                // Load all data for this session
-                console.log('📊 Loading factions...');
-                const { data: factionData, error: factionError } = await supabase
-                    .from('factions')
-                    .select('*')
-                    .eq('session_id', sessionId);
-                
-                if (factionError) throw factionError;
-                
-                console.log('👥 Loading senators...');
-                const { data: senatorData, error: senatorError } = await supabase
-                    .from('senators')
-                    .select('*')
-                    .eq('session_id', sessionId);
-                
-                if (senatorError) throw senatorError;
-                
-                console.log('🗳️ Loading faction votes...');
-                const { data: factionVoteData, error: factionVoteError } = await supabase
-                    .from('faction_votes')
-                    .select('*')
-                    .eq('session_id', sessionId);
-                
-                if (factionVoteError) throw factionVoteError;
-                
-                console.log('🗳️ Loading senator votes...');
-                const { data: senatorVoteData, error: senatorVoteError } = await supabase
-                    .from('senator_votes')
-                    .select('*')
-                    .eq('session_id', sessionId);
-                
-                if (senatorVoteError) throw senatorVoteError;
-                
-                console.log('🏛️ Loading party seats...');
-                const { data: partyData, error: partyError } = await supabase
-                    .from('party_seats')
-                    .select('*')
-                    .eq('session_id', sessionId);
-                
-                if (partyError) throw partyError;
-                
-                // Organize data
-                factions = { republican: [], democrat: [] };
-                senators = { republican: [], democrat: [] };
-                votes = {};
-                
-                factionData.forEach(faction => {
-                    factions[faction.party].push(faction);
-                });
-                
-                senatorData.forEach(senator => {
-                    senators[senator.party].push(senator);
-                });
-                
-                // Combine faction and senator votes
-                [...factionVoteData, ...senatorVoteData].forEach(vote => {
-                    votes[vote.faction_id || vote.senator_id] = vote.vote_type;
-                });
-                
-                // Load party seats if available
-                if (partyData.length > 0) {
-                    const partySeatsData = partyData[0];
-                    partySeats = {
-                        republican: { 
-                            senate: partySeatsData.rep_senate || 49, 
-                            house: partySeatsData.rep_house || 232 
-                        },
-                        democrat: { 
-                            senate: partySeatsData.dem_senate || 50, 
-                            house: partySeatsData.dem_house || 203 
-                        }
-                    };
-                } else {
-                    // Set defaults if no party data exists
-                    partySeats = {
-                        republican: { senate: 49, house: 232 },
-                        democrat: { senate: 50, house: 203 }
-                    };
-                    // Save defaults to database
-                    await savePartySeats();
-                }
-                
-                const sessionName = document.getElementById('sessionSelect').selectedOptions[0].textContent;
-                document.getElementById('currentSession').textContent = `Active: ${sessionName}`;
-                
-                console.log('✅ Session loaded successfully');
-                console.log('📊 Data summary:', {
-                    factions: Object.values(factions).flat().length,
-                    senators: Object.values(senators).flat().length,
-                    votes: Object.keys(votes).length
-                });
-                
-                updateFactionSelectors();
-                updatePartySeatsDisplay();
-                renderAll();
-                updateResults();
-                updateConnectionStatus('connected');
-                
-            } catch (error) {
-                console.error('❌ Error loading session:', error);
-                updateConnectionStatus('error');
-                alert('Failed to load session: ' + error.message);
-            }
-        }
-
-        // ===== SESSION MANAGEMENT =====
-
-        // ===== VOTE WEIGHT CALCULATIONS =====
-        function calculateSenatorVoteWeight(senator, party) {
-            const totalPartySeats = partySeats[party].senate;
-            const partyFactions = factions[party].filter(f => f.senate_count > 0);
-            
-            // Sort factions by size for caucus chair hierarchy
-            const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
-            
-            switch(senator.role) {
-                case 'party_leader':
-                    return totalPartySeats * 0.25; // 25%
-                case 'party_whip':
-                    return totalPartySeats * 0.20; // 20%
-                case 'caucus_chair':
-                    // Determine caucus chair weight based on faction size ranking
-                    const chairFaction = factions[party].find(f => f.id === senator.faction_id);
-                    if (!chairFaction) return 0;
-                    
-                    const factionRank = sortedFactions.findIndex(f => f.id === chairFaction.id);
-                    if (factionRank === 0) return totalPartySeats * 0.15; // Largest caucus: 15%
-                    if (factionRank === 1) return totalPartySeats * 0.10; // Middle caucus: 10%
-                    if (factionRank === 2) return totalPartySeats * 0.05; // Smallest caucus: 5%
-                    return 0; // No weight if more than 3 factions
-                case 'senator':
-                default:
-                    // Regular senators share remaining 25% of votes
-                    const remainingPercentage = 0.25;
-                    const regularSenators = senators[party].filter(s => s.role === 'senator');
-                    if (regularSenators.length === 0) return 0;
-                    
-                    const regularFaction = factions[party].find(f => f.id === senator.faction_id);
-                    
-                    if (!regularFaction) {
-                        // If no faction, share equally among all regular senators in party
-                        return (totalPartySeats * remainingPercentage) / regularSenators.length;
-                    } else {
-                        // Share within faction first, then party
-                        const factionRegularSenators = regularSenators.filter(s => s.faction_id === senator.faction_id);
-                        if (factionRegularSenators.length === 0) return 0;
-                        
-                        const factionWeight = regularFaction.senate_count / totalPartySeats;
-                        return (totalPartySeats * remainingPercentage * factionWeight) / factionRegularSenators.length;
+                case 'local':
+                    if (statusEl) statusEl.textContent = '📁 Local + File Backup';
+                    if (detailsEl && !detailsEl.textContent.includes('API key')) {
+                        detailsEl.textContent = 'Google Sheets unavailable - using enhanced local storage with file backup';
                     }
+                    if (syncBtn) syncBtn.disabled = false;
+                    break;
+                case 'syncing':
+                    if (statusEl) statusEl.textContent = '🔄 Syncing...';
+                    if (detailsEl) detailsEl.textContent = 'Saving to Google Sheets...';
+                    if (syncBtn) syncBtn.disabled = true;
+                    break;
+                case 'synced':
+                    if (statusEl) statusEl.textContent = '📊 Google Sheets';
+                    if (detailsEl) detailsEl.textContent = `Connected to Google Sheets - last sync: ${new Date().toLocaleTimeString()}`;
+                    if (syncBtn) syncBtn.disabled = false;
+                    break;
+                case 'offline':
+                    if (statusEl) statusEl.textContent = '📁 Local + File Backup';
+                    if (detailsEl && !detailsEl.textContent.includes('API key')) {
+                        detailsEl.textContent = 'Google Sheets connection failed - using enhanced local storage with import/export';
+                    }
+                    if (syncBtn) syncBtn.disabled = false;
+                    break;
             }
         }
 
-        function getSenatorDisplayWeight(senator, party) {
-            const weight = calculateSenatorVoteWeight(senator, party);
-            return Math.round(weight * 100) / 100; // Round to 2 decimal places
-        }
-
-        function getRoleDisplayName(role) {
-            switch(role) {
-                case 'party_leader': return 'Party Leader';
-                case 'party_whip': return 'Party Whip';
-                case 'caucus_chair': return 'Caucus Chair';
-                case 'senator':
-                default: return 'Senator';
-            }
-        }
-
-        // ===== VOTING =====
-        async function vote(id, voteType, isSenator = false) {
-            if (!currentSessionId) {
-                alert('No session selected. Please select a session first.');
+        async function syncWithDatabase() {
+            if (!syncEnabled) {
+                // Enhanced local save with file persistence option
+                saveToLocalStorage();
+                updateSyncStatus('local');
+                
+                const btn = document.getElementById('syncBtn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Saved!';
+                
+                // Offer export option
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    const shouldExport = confirm('Data saved locally. Would you like to export a backup file for true persistence?');
+                    if (shouldExport) {
+                        exportAllData();
+                    }
+                }, 2000);
                 return;
             }
-
-            console.log('🗳️ Recording vote:', { id, voteType, isSenator, sessionId: currentSessionId });
-
+            
+            console.log('🔄 Starting database sync...');
+            
             try {
-                const table = isSenator ? 'senator_votes' : 'faction_votes';
-                const idField = isSenator ? 'senator_id' : 'faction_id';
+                await saveSessionToDatabase();
                 
-                // Delete existing vote for this entity in this session
-                console.log(`🗑️ Clearing existing ${table} for ${idField}: ${id}`);
-                const { error: deleteError } = await supabase
-                    .from(table)
-                    .delete()
-                    .eq('session_id', currentSessionId)
-                    .eq(idField, id);
-
-                if (deleteError) {
-                    console.warn('Warning deleting existing vote (might not exist):', deleteError);
-                }
-
-                // Insert new vote
-                console.log(`✅ Inserting new vote in ${table}`);
-                const { data, error } = await supabase
-                    .from(table)
-                    .insert([{
-                        session_id: currentSessionId,
-                        [idField]: id,
-                        vote_type: voteType
-                    }])
-                    .select();
-
-                if (error) {
-                    console.error('Database error recording vote:', error);
-                    throw error;
-                }
-
-                console.log('✅ Vote recorded successfully in database:', data);
+                // Show success feedback
+                const btn = document.getElementById('syncBtn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Synced!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
                 
-                // Update local state
-                votes[id] = voteType;
-                renderAll();
-                updateResults();
-
             } catch (error) {
-                console.error('❌ Error recording vote:', error);
-                alert('Failed to record vote: ' + error.message);
+                console.error('❌ Sync failed:', error);
+                alert('Sync failed: ' + error.message);
             }
         }
+
+        // ===== PARTY SEATS MANAGEMENT =====
         function updatePartySeats() {
             partySeats = {
                 republican: {
@@ -1376,54 +2103,44 @@ Need help? Check the browser console (F12) for more details.`);
                 }
             };
             
-            console.log('Updated party seats:', partySeats);
-            
-            // Update all displays throughout the interface
+            clearWeightCache();
             updatePartySeatsDisplay();
             updateSeatCounts();
-            savePartySeats();
+            autoSave();
             updateResults();
         }
 
+        // ===== AUTO-SAVE FUNCTIONALITY =====
+        async function autoSave() {
+            try {
+                if (syncEnabled) {
+                    // Debounce database saves
+                    clearTimeout(window.autoSaveTimeout);
+                    window.autoSaveTimeout = setTimeout(async () => {
+                        await saveSessionToDatabase();
+                    }, 2000);
+                } else {
+                    saveToLocalStorage();
+                }
+            } catch (error) {
+                console.error('Auto-save error:', error);
+            }
+        }
+
         function updatePartySeatsDisplay() {
-            // Update the input fields (in case called from elsewhere)
             document.getElementById('repSenateSeats').value = partySeats.republican.senate;
             document.getElementById('repHouseSeats').value = partySeats.republican.house;
             document.getElementById('demSenateSeats').value = partySeats.democrat.senate;
             document.getElementById('demHouseSeats').value = partySeats.democrat.house;
             
-            // Update the total seat displays in the chamber sections
             document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
             document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
             document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
             document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
-            
-            console.log('Updated all party seat displays');
-        }
-
-        async function savePartySeats() {
-            if (!currentSessionId) return;
-            
-            try {
-                const { error } = await supabase
-                    .from('party_seats')
-                    .upsert([{
-                        session_id: currentSessionId,
-                        rep_senate: partySeats.republican.senate,
-                        rep_house: partySeats.republican.house,
-                        dem_senate: partySeats.democrat.senate,
-                        dem_house: partySeats.democrat.house
-                    }]);
-                
-                if (error) throw error;
-                
-            } catch (error) {
-                console.error('Error saving party seats:', error);
-            }
         }
 
         // ===== FACTION MANAGEMENT =====
-        async function addFaction() {
+        function addFaction() {
             const name = document.getElementById('factionName').value.trim();
             const party = document.getElementById('factionParty').value;
             const senateCount = parseInt(document.getElementById('factionSenateCount').value) || 0;
@@ -1434,51 +2151,25 @@ Need help? Check the browser console (F12) for more details.`);
                 return;
             }
 
-            console.log('Adding faction:', { name, party, senateCount, houseCount });
-
-            try {
-                // In offline mode, just add to local data
-                if (currentSessionId === 'offline') {
-                    const newFaction = {
-                        id: Date.now(), // Use timestamp as ID in offline mode
-                        name: name,
-                        party: party,
-                        senate_count: senateCount,
-                        house_count: houseCount
-                    };
-                    
-                    factions[party].push(newFaction);
-                    console.log('Faction added in offline mode:', newFaction);
-                } else {
-                    // Database mode
-                    const { data, error } = await supabase
-                        .from('factions')
-                        .insert([{
-                            session_id: currentSessionId,
-                            name: name,
-                            party: party,
-                            senate_count: senateCount,
-                            house_count: houseCount
-                        }])
-                        .select();
-
-                    if (error) throw error;
-                    factions[party].push(data[0]);
-                }
-
-                // Clear form
-                document.getElementById('factionName').value = '';
-                document.getElementById('factionSenateCount').value = '0';
-                document.getElementById('factionHouseCount').value = '0';
-                
-                updateFactionSelectors();
-                renderAll();
-                updateResults();
-
-            } catch (error) {
-                console.error('Error adding faction:', error);
-                alert('Failed to add faction: ' + error.message);
-            }
+            const newFaction = {
+                id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
+                name: name,
+                party: party,
+                senate_count: senateCount,
+                house_count: houseCount
+            };
+            
+            factions[party].push(newFaction);
+            
+            document.getElementById('factionName').value = '';
+            document.getElementById('factionSenateCount').value = '0';
+            document.getElementById('factionHouseCount').value = '0';
+            
+            clearWeightCache();
+            updateFactionSelectors();
+            renderAll();
+            updateResults();
+            autoSave();
         }
 
         function showAddFaction(party) {
@@ -1486,21 +2177,14 @@ Need help? Check the browser console (F12) for more details.`);
             document.getElementById('factionName').focus();
         }
 
-        async function removeFaction(party, id) {
-            try {
-                if (currentSessionId !== 'offline') {
-                    await supabase.from('factions').delete().eq('id', id);
-                }
-                
-                factions[party] = factions[party].filter(f => f.id !== id);
-                delete votes[id];
-                updateFactionSelectors();
-                renderAll();
-                updateResults();
-            } catch (error) {
-                console.error('Error removing faction:', error);
-                alert('Failed to remove faction: ' + error.message);
-            }
+        function removeFaction(party, id) {
+            factions[party] = factions[party].filter(f => f.id !== id);
+            delete votes[id];
+            clearWeightCache(); // Clear weights when factions change
+            updateFactionSelectors();
+            renderAll();
+            updateResults();
+            saveSessionData(sessionId);
         }
 
         function updateFactionSelectors() {
@@ -1518,7 +2202,7 @@ Need help? Check the browser console (F12) for more details.`);
         }
 
         // ===== SENATOR MANAGEMENT =====
-        async function addSenator() {
+        function addSenator() {
             const name = document.getElementById('senatorName').value.trim();
             const party = document.getElementById('senatorParty').value;
             const role = document.getElementById('senatorRole').value;
@@ -1538,182 +2222,174 @@ Need help? Check the browser console (F12) for more details.`);
                 }
             }
 
-            console.log('Adding senator:', { name, party, role, factionId });
-
-            try {
-                // In offline mode, just add to local data
-                if (currentSessionId === 'offline') {
-                    const newSenator = {
-                        id: Date.now(), // Use timestamp as ID in offline mode
-                        name: name,
-                        party: party,
-                        role: role,
-                        faction_id: factionId ? parseInt(factionId) : null
-                    };
-                    
-                    senators[party].push(newSenator);
-                    console.log('Senator added in offline mode:', newSenator);
-                } else {
-                    // Database mode
-                    const { data, error } = await supabase
-                        .from('senators')
-                        .insert([{
-                            session_id: currentSessionId,
-                            name: name,
-                            party: party,
-                            role: role,
-                            faction_id: factionId || null
-                        }])
-                        .select();
-
-                    if (error) throw error;
-                    senators[party].push(data[0]);
-                }
-
-                document.getElementById('senatorName').value = '';
-                
-                renderAll();
-                updateResults();
-
-            } catch (error) {
-                console.error('Error adding senator:', error);
-                alert('Failed to add senator: ' + error.message);
-            }
-        }
-
-        async function removeSenator(party, id) {
-            try {
-                if (currentSessionId !== 'offline') {
-                    await supabase.from('senators').delete().eq('id', id);
-                }
-                
-                senators[party] = senators[party].filter(s => s.id !== id);
-                delete votes[id];
-                renderAll();
-                updateResults();
-            } catch (error) {
-                console.error('Error removing senator:', error);
-                alert('Failed to remove senator: ' + error.message);
-            }
-        }
-
-        // ===== VOTE WEIGHT CALCULATIONS =====
-        // ===== PARTY SEATS MANAGEMENT =====
-        function updatePartySeats() {
-            partySeats = {
-                republican: {
-                    senate: parseInt(document.getElementById('repSenateSeats').value) || 0,
-                    house: parseInt(document.getElementById('repHouseSeats').value) || 0
-                },
-                democrat: {
-                    senate: parseInt(document.getElementById('demSenateSeats').value) || 0,
-                    house: parseInt(document.getElementById('demHouseSeats').value) || 0
-                }
+            const newSenator = {
+                id: Date.now(),
+                name: name,
+                party: party,
+                role: role,
+                faction_id: factionId ? parseInt(factionId) : null
             };
             
-            console.log('Updated party seats:', partySeats);
+            senators[party].push(newSenator);
+            document.getElementById('senatorName').value = '';
             
-            // Update all displays throughout the interface
-            updatePartySeatsDisplay();
-            updateSeatCounts();
-            savePartySeats();
+            clearWeightCache(); // Clear weights when senators change
+            renderAll();
             updateResults();
+            saveSessionData(sessionId);
         }
 
-        function updatePartySeatsDisplay() {
-            // Update the input fields (in case called from elsewhere)
-            document.getElementById('repSenateSeats').value = partySeats.republican.senate;
-            document.getElementById('repHouseSeats').value = partySeats.republican.house;
-            document.getElementById('demSenateSeats').value = partySeats.democrat.senate;
-            document.getElementById('demHouseSeats').value = partySeats.democrat.house;
-            
-            // Update the total seat displays in the chamber sections
-            document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
-            document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
-            document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
-            document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
-            
-            console.log('Updated all party seat displays');
+        function removeSenator(party, id) {
+            senators[party] = senators[party].filter(s => s.id !== id);
+            delete votes[id];
+            clearWeightCache(); // Clear weights when senators change
+            renderAll();
+            updateResults();
+            saveSessionData(sessionId);
         }
 
-        async function savePartySeats() {
-            if (!currentSessionId) {
-                console.log('⚠️ No session selected, cannot save party seats');
-                return;
+        // ===== VOTE WEIGHT CALCULATIONS (FIXED) =====
+        function calculateSenatorVoteWeight(senator, party) {
+            // Use cached weights if available
+            if (window.cachedWeights && window.cachedWeights[party] && window.cachedWeights[party][senator.id] !== undefined) {
+                return window.cachedWeights[party][senator.id];
             }
             
-            console.log('💾 Saving party seats to database...');
+            // If no cached weights, calculate for all senators in this party
+            return calculateAllPartyWeights(party)[senator.id] || 0;
+        }
+
+        function calculateAllPartyWeights(party) {
+            const totalPartySeats = partySeats[party].senate;
+            if (totalPartySeats === 0) {
+                return {};
+            }
             
-            try {
-                const { error } = await supabase
-                    .from('party_seats')
-                    .upsert([{
-                        session_id: currentSessionId,
-                        rep_senate: partySeats.republican.senate,
-                        rep_house: partySeats.republican.house,
-                        dem_senate: partySeats.democrat.senate,
-                        dem_house: partySeats.democrat.house
-                    }]);
-                
-                if (error) {
-                    console.error('Database error saving party seats:', error);
-                    throw error;
+            const partySenators = senators[party];
+            if (partySenators.length === 0) {
+                return {};
+            }
+            
+            // Step 1: Calculate ideal weights for all senators
+            const idealWeights = {};
+            partySenators.forEach(senator => {
+                // Calculate base faction weight
+                let baseWeight = 0;
+                if (senator.faction_id) {
+                    const faction = factions[party].find(f => f.id === senator.faction_id);
+                    if (faction && faction.senate_count > 0) {
+                        const factionPlayers = partySenators.filter(s => s.faction_id === senator.faction_id);
+                        baseWeight = faction.senate_count / factionPlayers.length;
+                    }
                 }
                 
-                console.log('✅ Party seats saved successfully');
+                // Calculate leadership bonus
+                let leadershipBonus = 0;
+                switch(senator.role) {
+                    case 'party_leader':
+                        leadershipBonus = totalPartySeats * 0.25;
+                        break;
+                    case 'party_whip':
+                        leadershipBonus = totalPartySeats * 0.20;
+                        break;
+                    case 'caucus_chair':
+                        const chairFaction = factions[party].find(f => f.id === senator.faction_id);
+                        if (chairFaction) {
+                            const partyFactions = factions[party].filter(f => f.senate_count > 0);
+                            const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
+                            const factionRank = sortedFactions.findIndex(f => f.id === chairFaction.id);
+                            
+                            if (factionRank === 0) {
+                                leadershipBonus = totalPartySeats * 0.15;
+                            } else if (factionRank === 1) {
+                                leadershipBonus = totalPartySeats * 0.10;
+                            } else {
+                                leadershipBonus = totalPartySeats * 0.05;
+                            }
+                        } else {
+                            leadershipBonus = totalPartySeats * 0.05;
+                        }
+                        break;
+                    default:
+                        leadershipBonus = 0;
+                        break;
+                }
                 
-            } catch (error) {
-                console.error('❌ Error saving party seats:', error);
-                alert('Failed to save party seat configuration: ' + error.message);
-            }
-        }
-            const totalPartySeats = partySeats[party].senate;
-            const partyFactions = factions[party].filter(f => f.senate_count > 0);
+                idealWeights[senator.id] = baseWeight + leadershipBonus;
+            });
             
-            // Sort factions by size for caucus chair hierarchy
-            const sortedFactions = [...partyFactions].sort((a, b) => b.senate_count - a.senate_count);
+            // Step 2: Check if total exceeds party seat count
+            const totalIdealWeight = Object.values(idealWeights).reduce((sum, weight) => sum + weight, 0);
             
-            switch(senator.role) {
-                case 'party_leader':
-                    return totalPartySeats * 0.25; // 25%
-                case 'party_whip':
-                    return totalPartySeats * 0.20; // 20%
-                case 'caucus_chair':
-                    // Determine caucus chair weight based on faction size ranking
-                    const senatorFaction = factions[party].find(f => f.id === senator.faction_id);
-                    if (!senatorFaction) return 0;
+            // Step 3: Scale down if necessary and round to whole numbers
+            const finalWeights = {};
+            if (totalIdealWeight > totalPartySeats) {
+                // Scale down proportionally
+                const scaleFactor = totalPartySeats / totalIdealWeight;
+                partySenators.forEach(senator => {
+                    finalWeights[senator.id] = Math.max(1, Math.round(idealWeights[senator.id] * scaleFactor));
+                });
+                
+                // Adjust to ensure exact total (distribute any remaining seats)
+                let currentTotal = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
+                const difference = totalPartySeats - currentTotal;
+                
+                if (difference !== 0) {
+                    // Sort senators by their ideal weight (highest first) to give remaining seats to most important roles
+                    const sortedSenators = partySenators.sort((a, b) => idealWeights[b.id] - idealWeights[a.id]);
                     
-                    const factionRank = sortedFactions.findIndex(f => f.id === senatorFaction.id);
-                    if (factionRank === 0) return totalPartySeats * 0.15; // Largest caucus: 15%
-                    if (factionRank === 1) return totalPartySeats * 0.10; // Middle caucus: 10%
-                    if (factionRank === 2) return totalPartySeats * 0.05; // Smallest caucus: 5%
-                    return 0; // No weight if more than 3 factions
-                case 'senator':
-                default:
-                    // Regular senators share remaining 25% of votes
-                    const remainingPercentage = 0.25;
-                    const regularSenators = senators[party].filter(s => s.role === 'senator');
-                    if (regularSenators.length === 0) return 0;
-                    
-                    const senatorFaction = factions[party].find(f => f.id === senator.faction_id);
-                    
-                    if (!senatorFaction) {
-                        // If no faction, share equally among all regular senators in party
-                        return (totalPartySeats * remainingPercentage) / regularSenators.length;
+                    if (difference > 0) {
+                        // Add remaining seats to highest weighted senators
+                        for (let i = 0; i < difference && i < sortedSenators.length; i++) {
+                            finalWeights[sortedSenators[i].id]++;
+                        }
                     } else {
-                        // Share within faction first, then party
-                        const factionRegularSenators = regularSenators.filter(s => s.faction_id === senator.faction_id);
-                        if (factionRegularSenators.length === 0) return 0;
-                        
-                        const factionWeight = senatorFaction.senate_count / totalPartySeats;
-                        return (totalPartySeats * remainingPercentage * factionWeight) / factionRegularSenators.length;
+                        // Remove excess seats from lowest weighted senators (but keep minimum of 1)
+                        for (let i = sortedSenators.length - 1; i >= 0 && currentTotal > totalPartySeats; i--) {
+                            if (finalWeights[sortedSenators[i].id] > 1) {
+                                finalWeights[sortedSenators[i].id]--;
+                                currentTotal--;
+                            }
+                        }
                     }
+                }
+            } else {
+                // No scaling needed, just round
+                partySenators.forEach(senator => {
+                    finalWeights[senator.id] = Math.max(1, Math.round(idealWeights[senator.id]));
+                });
+                
+                // Still need to ensure we don't exceed total due to rounding
+                let currentTotal = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
+                if (currentTotal > totalPartySeats) {
+                    const excess = currentTotal - totalPartySeats;
+                    const sortedSenators = partySenators.sort((a, b) => idealWeights[a.id] - idealWeights[b.id]);
+                    
+                    for (let i = 0; i < excess && i < sortedSenators.length; i++) {
+                        if (finalWeights[sortedSenators[i].id] > 1) {
+                            finalWeights[sortedSenators[i].id]--;
+                        }
+                    }
+                }
             }
+            
+            // Cache the weights
+            if (!window.cachedWeights) {
+                window.cachedWeights = {};
+            }
+            window.cachedWeights[party] = finalWeights;
+            
+            return finalWeights;
+        }
+
+        // Clear cached weights when data changes
+        function clearWeightCache() {
+            window.cachedWeights = {};
         }
 
         function getSenatorDisplayWeight(senator, party) {
             const weight = calculateSenatorVoteWeight(senator, party);
-            return Math.round(weight * 100) / 100; // Round to 2 decimal places
+            return weight; // Already rounded to whole number in calculation
         }
 
         function getRoleDisplayName(role) {
@@ -1725,45 +2401,15 @@ Need help? Check the browser console (F12) for more details.`);
                 default: return 'Senator';
             }
         }
-        async function vote(id, voteType, isSenator = false) {
-            if (!currentSessionId) {
-                alert('No session selected');
-                return;
-            }
 
-            console.log('Recording vote:', { id, voteType, isSenator, sessionId: currentSessionId });
-
-            try {
-                const table = isSenator ? 'senator_votes' : 'faction_votes';
-                const idField = isSenator ? 'senator_id' : 'faction_id';
-                
-                // Delete existing vote
-                await supabase
-                    .from(table)
-                    .delete()
-                    .eq('session_id', currentSessionId)
-                    .eq(idField, id);
-
-                // Insert new vote
-                const { data, error } = await supabase
-                    .from(table)
-                    .insert([{
-                        session_id: currentSessionId,
-                        [idField]: id,
-                        vote_type: voteType
-                    }])
-                    .select();
-
-                if (error) throw error;
-
-                votes[id] = voteType;
-                renderAll();
-                updateResults();
-
-            } catch (error) {
-                console.error('Error recording vote:', error);
-                alert('Failed to record vote: ' + error.message);
-            }
+        // ===== VOTING =====
+        function vote(id, voteType, isSenator = false) {
+            votes[id] = voteType;
+            renderAll();
+            updateResults();
+            autoSave();
+            
+            console.log(`🗳️ Vote recorded: ${isSenator ? 'Senator' : 'Faction'} ${id} voted ${voteType}`);
         }
 
         // ===== RENDERING =====
@@ -1777,7 +2423,6 @@ Need help? Check the browser console (F12) for more details.`);
             ['republican', 'democrat'].forEach(party => {
                 const container = document.getElementById(party === 'republican' ? 'republicanSenators' : 'democratSenators');
                 
-                // Sort senators by role hierarchy for display
                 const sortedSenators = [...senators[party]].sort((a, b) => {
                     const roleOrder = { 'party_leader': 0, 'party_whip': 1, 'caucus_chair': 2, 'senator': 3 };
                     return roleOrder[a.role] - roleOrder[b.role];
@@ -1799,11 +2444,11 @@ Need help? Check the browser console (F12) for more details.`);
                             </div>
                             <div class="vote-buttons">
                                 <button class="vote-btn aye ${votes[senator.id] === 'aye' ? 'active' : ''}" 
-                                        onclick="console.log('Senate vote: ${senator.name} (${voteWeight} votes)'); vote(${senator.id}, 'aye', true)">AYE</button>
+                                        onclick="vote(${senator.id}, 'aye', true)">AYE</button>
                                 <button class="vote-btn nay ${votes[senator.id] === 'nay' ? 'active' : ''}" 
-                                        onclick="console.log('Senate vote: ${senator.name} (${voteWeight} votes)'); vote(${senator.id}, 'nay', true)">NAY</button>
+                                        onclick="vote(${senator.id}, 'nay', true)">NAY</button>
                                 <button class="vote-btn pres ${votes[senator.id] === 'pres' ? 'active' : ''}" 
-                                        onclick="console.log('Senate vote: ${senator.name} (${voteWeight} votes)'); vote(${senator.id}, 'pres', true)">PRES</button>
+                                        onclick="vote(${senator.id}, 'pres', true)">PRES</button>
                             </div>
                             <button class="delete-btn" onclick="removeSenator('${party}', ${senator.id})">×</button>
                         </div>
@@ -1824,11 +2469,11 @@ Need help? Check the browser console (F12) for more details.`);
                         </div>
                         <div class="vote-buttons">
                             <button class="vote-btn aye ${votes[faction.id] === 'aye' ? 'active' : ''}" 
-                                    onclick="console.log('House faction vote: ${faction.name} (${faction.house_count} members)'); vote(${faction.id}, 'aye', false)">AYE</button>
+                                    onclick="vote(${faction.id}, 'aye', false)">AYE</button>
                             <button class="vote-btn nay ${votes[faction.id] === 'nay' ? 'active' : ''}" 
-                                    onclick="console.log('House faction vote: ${faction.name} (${faction.house_count} members)'); vote(${faction.id}, 'nay', false)">NAY</button>
+                                    onclick="vote(${faction.id}, 'nay', false)">NAY</button>
                             <button class="vote-btn pres ${votes[faction.id] === 'pres' ? 'active' : ''}" 
-                                    onclick="console.log('House faction vote: ${faction.name} (${faction.house_count} members)'); vote(${faction.id}, 'pres', false)">PRES</button>
+                                    onclick="vote(${faction.id}, 'pres', false)">PRES</button>
                         </div>
                         <button class="delete-btn" onclick="removeFaction('${party}', ${faction.id})">×</button>
                     </div>
@@ -1837,32 +2482,30 @@ Need help? Check the browser console (F12) for more details.`);
         }
 
         function updateSeatCounts() {
-            // Count current senators (for Senate)
             const repSenateCurrent = senators.republican.length;
             const demSenateCurrent = senators.democrat.length;
-            
-            // Count current faction members (for House)
             const repHouseCurrent = factions.republican.reduce((sum, f) => sum + (f.house_count || 0), 0);
             const demHouseCurrent = factions.democrat.reduce((sum, f) => sum + (f.house_count || 0), 0);
 
-            // Update current count displays
+            // Calculate total weights for each party
+            const repWeights = calculateAllPartyWeights('republican');
+            const demWeights = calculateAllPartyWeights('democrat');
+            const repTotalWeight = Object.values(repWeights).reduce((sum, weight) => sum + weight, 0);
+            const demTotalWeight = Object.values(demWeights).reduce((sum, weight) => sum + weight, 0);
+
             document.getElementById('repSenateCurrent').textContent = repSenateCurrent;
             document.getElementById('demSenateCurrent').textContent = demSenateCurrent;
             document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
             document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
             
-            // Update total count displays (from party seats configuration)
             document.getElementById('repSenateTotal').textContent = partySeats.republican.senate;
             document.getElementById('repHouseTotal').textContent = partySeats.republican.house;
             document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
             document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
             
-            console.log('Seat counts updated:', {
-                repSenate: `${repSenateCurrent}/${partySeats.republican.senate}`,
-                demSenate: `${demSenateCurrent}/${partySeats.democrat.senate}`,
-                repHouse: `${repHouseCurrent}/${partySeats.republican.house}`,
-                demHouse: `${demHouseCurrent}/${partySeats.democrat.house}`
-            });
+            // Update weight displays
+            document.getElementById('repSenateWeight').textContent = repTotalWeight;
+            document.getElementById('demSenateWeight').textContent = demTotalWeight;
         }
 
         // ===== CALCULATIONS =====
@@ -1883,7 +2526,7 @@ Need help? Check the browser console (F12) for more details.`);
                 });
             });
 
-            // Calculate House results ONLY from factions (never from senators)
+            // Calculate House results from factions
             ['republican', 'democrat'].forEach(party => {
                 factions[party].forEach(faction => {
                     const vote = votes[faction.id];
@@ -1893,7 +2536,7 @@ Need help? Check the browser console (F12) for more details.`);
                 });
             });
 
-            // Round Senate results to nearest whole number for display
+            // Round Senate results (though they should already be whole numbers)
             ['republican', 'democrat'].forEach(party => {
                 ['aye', 'nay', 'pres'].forEach(voteType => {
                     results[party].senate[voteType] = Math.round(results[party].senate[voteType]);
@@ -1940,70 +2583,29 @@ Need help? Check the browser console (F12) for more details.`);
         }
 
         // ===== UTILITY FUNCTIONS =====
-        function showAddLegislator(party) {
-            document.getElementById('senatorParty').value = party;
-            document.getElementById('senatorName').focus();
-        }
-        
-        function showAddFaction(party) {
-            document.getElementById('factionParty').value = party;
-            document.getElementById('factionName').focus();
-        }
-        
-        // Backward compatibility function
-        function addLegislator() {
-            // This redirects to addSenator for compatibility
-            addSenator();
-        }
-
-        async function clearAllVotes() {
+        function clearAllVotes() {
             if (!confirm('Are you sure you want to clear all votes?')) return;
             
-            if (!currentSessionId) {
-                alert('No session selected');
-                return;
-            }
+            votes = {};
+            renderAll();
+            updateResults();
+            autoSave();
+        }
+
+        function resetToDefaults() {
+            if (!confirm('Reset to default data? This will clear all your current data.')) return;
             
-            console.log('🗑️ Clearing all votes for session:', currentSessionId);
-
-            try {
-                // Clear both faction and senator votes
-                const [factionResult, senatorResult] = await Promise.all([
-                    supabase.from('faction_votes').delete().eq('session_id', currentSessionId),
-                    supabase.from('senator_votes').delete().eq('session_id', currentSessionId)
-                ]);
-
-                if (factionResult.error) throw factionResult.error;
-                if (senatorResult.error) throw senatorResult.error;
-
-                console.log('✅ All votes cleared from database');
-                votes = {};
-                renderAll();
-                updateResults();
-
-            } catch (error) {
-                console.error('❌ Error clearing votes:', error);
-                alert('Failed to clear votes: ' + error.message);
-            }
+            initializeDefaultData();
+            clearWeightCache();
+            updatePartySeatsDisplay();
+            updateFactionSelectors();
+            renderAll();
+            updateResults();
+            autoSave();
+            console.log('🔄 Reset to default data');
         }
 
-        async function reloadCurrentSession() {
-            if (currentSessionId) {
-                console.log('🔄 Reloading current session:', currentSessionId);
-                await loadSession(currentSessionId);
-            } else {
-                alert('No session currently selected');
-            }
-        }
-
-        async function exportResults() {
-            if (!currentSessionId) {
-                alert('Please select a session first');
-                return;
-            }
-
-            console.log('📊 Exporting results for session:', currentSessionId);
-
+        function exportResults() {
             const results = calculateResults();
             const exportData = {
                 session_id: currentSessionId,
@@ -2021,71 +2623,67 @@ Need help? Check the browser console (F12) for more details.`);
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = `voting_results_${new Date().toISOString().split('T')[0]}.json`;
+            const sessionName = availableSessions.find(s => s.id === currentSessionId)?.name || currentSessionId;
+            a.download = `voting_results_${sessionName}_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // ===== INITIALIZATION =====
+        async function initializeApp() {
+            console.log('🚀 Starting Congressional Voting System with Google Sheets...');
             
-            console.log('✅ Results exported successfully');
-        }
-
-        // ===== DELETION FUNCTIONS =====
-        async function removeFaction(party, id) {
-            if (!currentSessionId) {
-                alert('No session selected');
-                return;
-            }
-
-            console.log('🗑️ Removing faction:', { party, id });
-
-            try {
-                const { error } = await supabase.from('factions').delete().eq('id', id);
-                if (error) {
-                    console.error('Database error removing faction:', error);
-                    throw error;
+            // Set initial status
+            document.getElementById('connectionDetails').textContent = 'Initializing Google Sheets integration...';
+            updateSyncStatus('offline');
+            
+            // Wait a moment for external scripts to load
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Initialize Google Sheets connection
+            await initializeGoogleSheets();
+            
+            // Load current session
+            if (currentSessionId) {
+                if (syncEnabled) {
+                    await loadSessionFromSheets(currentSessionId);
+                } else {
+                    await loadLocalData();
                 }
-
-                console.log('✅ Faction removed from database');
-                factions[party] = factions[party].filter(f => f.id !== id);
-                delete votes[id];
-                updateFactionSelectors();
-                renderAll();
-                updateResults();
-            } catch (error) {
-                console.error('❌ Error removing faction:', error);
-                alert('Failed to remove faction: ' + error.message);
             }
+            
+            updateSessionSelector();
+            
+            console.log('✅ App ready! Congressional voting system with Google Sheets loaded');
+            console.log(`📊 Mode: ${syncEnabled ? 'Google Sheets Connected' : 'Local Storage with File Backup'}`);
         }
 
-        async function removeSenator(party, id) {
-            if (!currentSessionId) {
-                alert('No session selected');
-                return;
-            }
+        // ===== EVENT LISTENERS =====
+        window.addEventListener('online', () => {
+            isOnline = true;
+            console.log('📶 Back online');
+            updateSyncStatus('local');
+        });
 
-            console.log('🗑️ Removing senator:', { party, id });
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            console.log('📴 Gone offline');
+            updateSyncStatus('offline');
+        });
 
-            try {
-                const { error } = await supabase.from('senators').delete().eq('id', id);
-                if (error) {
-                    console.error('Database error removing senator:', error);
-                    throw error;
-                }
-
-                console.log('✅ Senator removed from database');
-                senators[party] = senators[party].filter(s => s.id !== id);
-                delete votes[id];
-                renderAll();
-                updateResults();
-            } catch (error) {
-                console.error('❌ Error removing senator:', error);
-                alert('Failed to remove senator: ' + error.message);
-            }
-        }
-
-        // Initialize the application
+        // Initialize when page loads
         initializeApp();
+
+        // Auto-save every 60 seconds for Google Sheets (longer to respect rate limits)
+        setInterval(() => {
+            if (syncEnabled) {
+                autoSave();
+            } else {
+                saveToLocalStorage();
+            }
+        }, 60000);
     </script>
 </body>
 </html>
