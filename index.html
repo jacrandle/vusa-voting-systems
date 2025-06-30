@@ -196,6 +196,37 @@
     let syncEnabled = false;
     let isOnline = navigator.onLine;
   </script>
+  <script>
+// ─── HASTERT RULE ENFORCEMENT ────────────────────────────────────
+// Returns true if that party has at least a majority of its own members
+// in favor, per the Hastert Rule.
+function canScheduleUnderHastertRule(party, ayeCount) {
+  // how many seats that party holds in the House
+  const totalSeats = partySeats[party].house;
+  // you need a majority *of the party* to even bring it to the floor
+  const needed = Math.floor(totalSeats / 2) + 1;
+  return ayeCount >= needed;
+}
+
+// Example usage: hook this into your “Schedule Vote” button handler
+
+document
+  .getElementById('scheduleVoteBtn')
+  .addEventListener('click', () => {
+    // say you’ve been tracking pledges in votesByParty:
+    const ayeCount = votesByParty['republican'] || 0;
+    if (!canScheduleUnderHastertRule('republican', ayeCount)) {
+      alert(
+        `Cannot schedule under Hastert Rule:\n` +
+        `Republicans need ${Math.floor(partySeats.republican.house/2)+1} ` +
+        `intra-party “AYE” pledges, but only ${ayeCount} so far.`
+      );
+      return;
+    }
+    // …otherwise go ahead and call your existing scheduleFloorVote()…
+    scheduleFloorVote();
+  });
+</script>
 
   <!-- Load Google Identity Services -->
   <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
@@ -808,6 +839,10 @@
         <button onclick="addFaction()">Add Faction</button>
       </div>
     </div>
+    <button id="scheduleVoteBtn" class="sync-btn">
+  📅 Schedule Floor Vote
+</button>
+
 
     <div class="chambers-section">
       <div class="chamber-section">
