@@ -1966,14 +1966,15 @@
       const majorityParty = repSeats > demSeats ? 'republican' : 'democrat';
       const minorityParty = majorityParty === 'republican' ? 'democrat' : 'republican';
       const majoritySeats = Math.max(repSeats, demSeats);
-      const majorityThreshold = Math.ceil(majoritySeats / 2);
+      const majorityThreshold = Math.floor(majoritySeats / 2) + 1; // 50% + 1
       
       const majorityAyes = results[majorityParty].house.aye;
       const minorityAyes = results[minorityParty].house.aye;
       const totalAyes = majorityAyes + minorityAyes;
+      const totalNays = results.republican.house.nay + results.democrat.house.nay;
       
       // Check if any votes have been cast
-      const totalVotesCast = totalAyes + results.republican.house.nay + results.democrat.house.nay + 
+      const totalVotesCast = totalAyes + totalNays + 
                             results.republican.house.pres + results.democrat.house.pres;
       
       if (totalVotesCast === 0) {
@@ -1983,7 +1984,7 @@
 
       const majorityPartyName = majorityParty === 'republican' ? 'Republican' : 'Democrat';
       const hastertMet = majorityAyes >= majorityThreshold;
-      const billPassing = totalAyes > Math.floor(totalSeats / 2);
+      const billPassing = totalAyes > totalNays; // Simple majority of votes cast
       
       let statusHtml = `
         <div style="margin-bottom: 12px; text-align: center;">
@@ -2012,13 +2013,13 @@
       if (billPassing) {
         statusHtml += `
           <div class="bill-status-passing">
-            📊 Bill Status: PASSING (${totalAyes} total ayes)
+            📊 Bill Status: PASSING (${totalAyes} ayes vs ${totalNays} nays)
           </div>
         `;
       } else {
         statusHtml += `
           <div class="bill-status-failing">
-            📊 Bill Status: FAILING (${totalAyes} total ayes)
+            📊 Bill Status: FAILING (${totalAyes} ayes vs ${totalNays} nays)
           </div>
         `;
       }
