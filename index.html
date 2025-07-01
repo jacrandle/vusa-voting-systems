@@ -1301,28 +1301,8 @@
         { session_id:id, party:'democrat',   senate_seats:50, house_seats:203 }
       ];
       for (let s of seats) await appendToSheet('partySeats', s);
-
-      const facs = [
-        { session_id:id, id:`f_${Date.now()}_1`, name:'Freedom Caucus',   party:'republican', senate_count:8,  house_count:45 },
-        { session_id:id, id:`f_${Date.now()}_2`, name:'Main Street',      party:'republican', senate_count:12, house_count:65 },
-        { session_id:id, id:`f_${Date.now()}_3`, name:'Traditional Rep',  party:'republican', senate_count:29, house_count:122 },
-        { session_id:id, id:`f_${Date.now()}_4`, name:'Progressive Caucus',party:'democrat',   senate_count:20, house_count:98 },
-        { session_id:id, id:`f_${Date.now()}_5`, name:'Blue Dog Coalition',party:'democrat',   senate_count:8,  house_count:25 },
-        { session_id:id, id:`f_${Date.now()}_6`, name:'Moderate Dems',     party:'democrat',   senate_count:22, house_count:80 }
-      ];
-      for (let f of facs) await appendToSheet('factions', f);
-
-      const sens = [
-        { session_id:id, id:`s_${Date.now()}_1`, name:'Mitch McConnell (R-KY)', party:'republican', role:'party_leader', faction_id:facs[2].id, vote_weight:12 },
-        { session_id:id, id:`s_${Date.now()}_2`, name:'John Thune (R-SD)', party:'republican', role:'party_whip', faction_id:facs[2].id, vote_weight:10 },
-        { session_id:id, id:`s_${Date.now()}_3`, name:'Ted Cruz (R-TX)', party:'republican', role:'caucus_chair', faction_id:facs[0].id, vote_weight:7 },
-        { session_id:id, id:`s_${Date.now()}_4`, name:'Susan Collins (R-ME)', party:'republican', role:'caucus_chair,committee_chair', faction_id:facs[1].id, vote_weight:5 },
-        { session_id:id, id:`s_${Date.now()}_5`, name:'Chuck Schumer (D-NY)', party:'democrat', role:'party_leader', faction_id:facs[5].id, vote_weight:13 },
-        { session_id:id, id:`s_${Date.now()}_6`, name:'Dick Durbin (D-IL)', party:'democrat', role:'party_whip', faction_id:facs[5].id, vote_weight:10 },
-        { session_id:id, id:`s_${Date.now()}_7`, name:'Bernie Sanders (I-VT)', party:'democrat', role:'caucus_chair', faction_id:facs[3].id, vote_weight:8 },
-        { session_id:id, id:`s_${Date.now()}_8`, name:'Joe Manchin (D-WV)', party:'democrat', role:'caucus_chair,committee_chair', faction_id:facs[4].id, vote_weight:5 }
-      ];
-      for (let s of sens) await appendToSheet('senators', s);
+      
+      // Start with empty factions and senators for clean slate
     }
 
     async function loadSessionFromSheets(id){
@@ -1493,31 +1473,13 @@
     }
     function initializeDefaultData(){
       factions = {
-        republican: [
-          { id: Date.now() + 1, name: 'Freedom Caucus', party: 'republican', senate_count: 8, house_count: 45 },
-          { id: Date.now() + 2, name: 'Main Street Partnership', party: 'republican', senate_count: 12, house_count: 65 },
-          { id: Date.now() + 3, name: 'Traditional Republicans', party: 'republican', senate_count: 29, house_count: 122 }
-        ],
-        democrat: [
-          { id: Date.now() + 4, name: 'Progressive Caucus', party: 'democrat', senate_count: 20, house_count: 98 },
-          { id: Date.now() + 5, name: 'Blue Dog Coalition', party: 'democrat', senate_count: 8, house_count: 25 },
-          { id: Date.now() + 6, name: 'Moderate Democrats', party: 'democrat', senate_count: 22, house_count: 80 }
-        ]
+        republican: [],
+        democrat: []
       };
       
       senators = {
-        republican: [
-          { id: Date.now() + 11, name: 'Mitch McConnell (R-KY)', party: 'republican', roles: ['party_leader'], faction_id: Date.now() + 3 },
-          { id: Date.now() + 12, name: 'John Thune (R-SD)', party: 'republican', roles: ['party_whip'], faction_id: Date.now() + 3 },
-          { id: Date.now() + 13, name: 'Ted Cruz (R-TX)', party: 'republican', roles: ['caucus_chair'], faction_id: Date.now() + 1 },
-          { id: Date.now() + 14, name: 'Susan Collins (R-ME)', party: 'republican', roles: ['caucus_chair', 'committee_chair'], faction_id: Date.now() + 2 }
-        ],
-        democrat: [
-          { id: Date.now() + 21, name: 'Chuck Schumer (D-NY)', party: 'democrat', roles: ['party_leader'], faction_id: Date.now() + 6 },
-          { id: Date.now() + 22, name: 'Dick Durbin (D-IL)', party: 'democrat', roles: ['party_whip'], faction_id: Date.now() + 6 },
-          { id: Date.now() + 23, name: 'Bernie Sanders (I-VT)', party: 'democrat', roles: ['caucus_chair'], faction_id: Date.now() + 4 },
-          { id: Date.now() + 24, name: 'Joe Manchin (D-WV)', party: 'democrat', roles: ['caucus_chair', 'committee_chair'], faction_id: Date.now() + 5 }
-        ]
+        republican: [],
+        democrat: []
       };
       
       votes = {};
