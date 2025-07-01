@@ -1484,8 +1484,8 @@
       
       votes = {};
       partySeats = {
-        republican: { senate: 0, house: 0 },
-        democrat: { senate: 0, house: 0 }
+        republican: { senate: 49, house: 232 },
+        democrat: { senate: 50, house: 203 }
       };
       
       clearWeightCache();
@@ -1574,107 +1574,60 @@
     }
 
     function calculateAllPartyWeights(party) {
-      const totalPartySeats = partySeats[party].senate;
-      if (totalPartySeats === 0) return {};
-      
+      const totalSeats = partySeats[party].senate;
+      if (totalSeats === 0) return {};
       const partySenators = senators[party];
-      if (partySenators.length === 0) return {};
-      
-      const finalWeights = {};
-      
-      // Step 1: Calculate Party Leader/Whip bonuses first (based on total party seats)
-      const leadershipWeights = {};
-      let totalLeadershipSeats = 0;
-      
-      partySenators.forEach(senator => {
-        const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
-        let leadershipBonus = 0;
-        
-        roles.forEach(role => {
-          if (role === 'party_leader') {
-            leadershipBonus += Math.round(totalPartySeats * 0.25);
-          } else if (role === 'party_whip') {
-            leadershipBonus += Math.round(totalPartySeats * 0.20);
-          }
-        });
-        
-        if (leadershipBonus > 0) {
-          leadershipWeights[senator.id] = leadershipBonus;
-          totalLeadershipSeats += leadershipBonus;
+      if (!partySenators.length) return {};
+      const weights = {};
+      // 1) Party Leader = 25% of total party seats
+      const leader = partySenators.find(s => s.roles.includes('party_leader'));
+      if (leader) {
+        weights[leader.id] = totalSeats * 0.25;
+      }
+      // 2) Party Whip = 20% of total party seats
+      const whip = partySenators.find(s => s.roles.includes('party_whip'));
+      if (whip) {
+        weights[whip.id] = totalSeats * 0.20;
+      }
+      // 3) Figure out caucus‐chair percentages per faction
+      const partyFacs = factions[party];
+      // sort factions by their seat count descending
+      const sortedFacs = [...partyFacs].sort((a, b) => b.senate_count - a.senate_count);
+      sortedFacs.forEach((faction, idx) => {
+        let pct;
+        if (idx === 0) pct = 0.15;                             // largest
+        else if (idx === sortedFacs.length - 1) pct = 0.05;    // smallest
+        else pct = 0.10;                                       // middle
+        // find that faction's chair
+        const chair = partySenators.find(s =>
+          s.roles.includes('caucus_chair') && s.faction_id === faction.id
+        );
+        if (chair) {
+          weights[chair.id] = (weights[chair.id] || 0) + totalSeats * pct;
         }
       });
-      
-      // Step 2: Calculate remaining seats for faction distribution
-      const remainingSeats = Math.max(0, totalPartySeats - totalLeadershipSeats);
-      
-      // Step 3: Group senators by faction and calculate faction allocations
-      const factionGroups = {};
-      let totalFactionSeats = 0;
-      
-      partySenators.forEach(senator => {
-        if (senator.faction_id) {
-          if (!factionGroups[senator.faction_id]) {
-            factionGroups[senator.faction_id] = [];
-          }
-          factionGroups[senator.faction_id].push(senator);
-        }
-      });
-      
-      // Calculate total faction seats for proportional distribution
-      Object.keys(factionGroups).forEach(factionId => {
-        const faction = factions[party].find(f => f.id === factionId);
-        if (faction) {
-          totalFactionSeats += faction.senate_count || 0;
-        }
-      });
-      
-      // Step 4: Distribute remaining seats among factions proportionally
-      Object.entries(factionGroups).forEach(([factionId, senatorsInFaction]) => {
-        const faction = factions[party].find(f => f.id === factionId);
-        if (!faction || senatorsInFaction.length === 0) return;
-        
-        const factionSeats = faction.senate_count || 0;
-        const factionAllocation = totalFactionSeats > 0 ? 
-          Math.round((factionSeats / totalFactionSeats) * remainingSeats) : 0;
-        
-        // Distribute faction allocation based on role weights
-        const roleWeights = { 'caucus_chair': 3, 'senator': 1 };
-        let totalRoleWeight = 0;
-        
-        senatorsInFaction.forEach(senator => {
-          const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
-          const factionRoles = roles.filter(r => r !== 'party_leader' && r !== 'party_whip');
-          const maxWeight = Math.max(...factionRoles.map(r => roleWeights[r] || 1));
-          totalRoleWeight += maxWeight;
+      // 4) Everyone else ("rank-and-file") splits the remainder equally
+      const allocated = Object.values(weights).reduce((sum, w) => sum + w, 0);
+      const remainder = totalSeats - allocated;
+      const rankAndFile = partySenators.filter(s =>
+        !s.roles.includes('party_leader') &&
+        !s.roles.includes('party_whip') &&
+        !s.roles.includes('caucus_chair')
+      );
+      if (rankAndFile.length) {
+        const each = remainder / rankAndFile.length;
+        rankAndFile.forEach(s => {
+          weights[s.id] = each;
         });
-        
-        senatorsInFaction.forEach(senator => {
-          const roles = Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
-          const factionRoles = roles.filter(r => r !== 'party_leader' && r !== 'party_whip');
-          const maxWeight = Math.max(...factionRoles.map(r => roleWeights[r] || 1));
-          
-          const factionWeight = totalRoleWeight > 0 ? 
-            Math.round((factionAllocation * maxWeight) / totalRoleWeight) : 0;
-          
-          finalWeights[senator.id] = factionWeight + (leadershipWeights[senator.id] || 0);
-        });
+      }
+      // 5) Round (and ensure at least 1)
+      Object.keys(weights).forEach(id => {
+        weights[id] = Math.max(1, Math.round(weights[id]));
       });
-      
-      // Handle unassigned senators
-      const unassignedSenators = partySenators.filter(s => !s.faction_id);
-      unassignedSenators.forEach(senator => {
-        finalWeights[senator.id] = (leadershipWeights[senator.id] || 0) + 1;
-      });
-      
-      // Ensure minimum weight of 1
-      partySenators.forEach(senator => {
-        finalWeights[senator.id] = Math.max(1, finalWeights[senator.id] || 1);
-      });
-      
-      if (!window.cachedWeights) window.cachedWeights = {};
-      window.cachedWeights[party] = finalWeights;
-      
-      return finalWeights;
+      // cache & return
+      window.cachedWeights = window.cachedWeights || {};
+      window.cachedWeights[party] = weights;
+      return weights;
     }
 
     function getSenatorDisplayWeight(senator, party) {
