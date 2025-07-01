@@ -1627,10 +1627,35 @@
           weights[s.id] = each;
         });
       }
-      // 5) Round (and ensure at least 1)
+      // 5) Round weights but ensure total equals totalSeats
       Object.keys(weights).forEach(id => {
         weights[id] = Math.max(1, Math.round(weights[id]));
       });
+      
+      // Adjust total to match exactly
+      const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0);
+      const difference = totalSeats - currentTotal;
+      
+      if (difference !== 0) {
+        // Distribute the difference among senators, starting with largest weights
+        const sortedSenators = partySenators.sort((a, b) => (weights[b.id] || 0) - (weights[a.id] || 0));
+        
+        if (difference > 0) {
+          // Need to add votes
+          for (let i = 0; i < difference && i < sortedSenators.length; i++) {
+            weights[sortedSenators[i].id] = (weights[sortedSenators[i].id] || 0) + 1;
+          }
+        } else {
+          // Need to remove votes
+          for (let i = sortedSenators.length - 1; i >= 0 && currentTotal > totalSeats; i--) {
+            if (weights[sortedSenators[i].id] > 1) {
+              weights[sortedSenators[i].id]--;
+              break;
+            }
+          }
+        }
+      }
+      
       // cache & return
       window.cachedWeights = window.cachedWeights || {};
       window.cachedWeights[party] = weights;
