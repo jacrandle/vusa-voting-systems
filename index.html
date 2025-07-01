@@ -1579,13 +1579,19 @@
       const partySenators = senators[party];
       if (!partySenators.length) return {};
       const weights = {};
+      
+      // Helper function to get roles as array
+      const getRoles = (senator) => {
+        return Array.isArray(senator.roles) ? senator.roles : (senator.role ? [senator.role] : ['senator']);
+      };
+      
       // 1) Party Leader = 25% of total party seats
-      const leader = partySenators.find(s => s.roles.includes('party_leader'));
+      const leader = partySenators.find(s => getRoles(s).includes('party_leader'));
       if (leader) {
         weights[leader.id] = totalSeats * 0.25;
       }
       // 2) Party Whip = 20% of total party seats
-      const whip = partySenators.find(s => s.roles.includes('party_whip'));
+      const whip = partySenators.find(s => getRoles(s).includes('party_whip'));
       if (whip) {
         weights[whip.id] = totalSeats * 0.20;
       }
@@ -1600,7 +1606,7 @@
         else pct = 0.10;                                       // middle
         // find that faction's chair
         const chair = partySenators.find(s =>
-          s.roles.includes('caucus_chair') && s.faction_id === faction.id
+          getRoles(s).includes('caucus_chair') && s.faction_id === faction.id
         );
         if (chair) {
           weights[chair.id] = (weights[chair.id] || 0) + totalSeats * pct;
@@ -1609,11 +1615,12 @@
       // 4) Everyone else ("rank-and-file") splits the remainder equally
       const allocated = Object.values(weights).reduce((sum, w) => sum + w, 0);
       const remainder = totalSeats - allocated;
-      const rankAndFile = partySenators.filter(s =>
-        !s.roles.includes('party_leader') &&
-        !s.roles.includes('party_whip') &&
-        !s.roles.includes('caucus_chair')
-      );
+      const rankAndFile = partySenators.filter(s => {
+        const roles = getRoles(s);
+        return !roles.includes('party_leader') &&
+               !roles.includes('party_whip') &&
+               !roles.includes('caucus_chair');
+      });
       if (rankAndFile.length) {
         const each = remainder / rankAndFile.length;
         rankAndFile.forEach(s => {
