@@ -822,15 +822,18 @@
       <h1>🏛️ VUSA Individual Voting System</h1>
       <p>Powered by Google Sheets – Real-time collaboration!</p>
       <div style="background:rgba(255,255,255,.2);padding:15px;border-radius:8px;margin-top:10px;font-size:.9em;line-height:1.4">
-        <strong>📋 Current Status:</strong><br/>
-        ✅ <strong>Spreadsheet Connected:</strong>
-        <a href="https://docs.google.com/spreadsheets/d/1_pzZhH-0rkspeX8EeRM_F10K7GIBbOTSnQWXNaXNFew/edit"
-           target="_blank" style="color:#fff;text-decoration:underline">
-          Your Google Sheet
-        </a><br/>
-        ✅ <strong>OAuth2 Client ID:</strong> Configured and ready<br/>
-        🔄 <strong>Modern Flow:</strong> Google Identity + gapi hybrid authentication<br/>
-        🚀 <strong>Ready to test!</strong> Serve via http://localhost (not file://)
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div>
+            <strong>📋 Current Session:</strong> <span id="headerSessionName">Loading...</span><br/>
+            <strong>👥 Senators Loaded:</strong> <span id="headerSenatorCount">0</span><br/>
+            <strong>🏛️ Factions Active:</strong> <span id="headerFactionCount">0</span>
+          </div>
+          <div>
+            <strong>💾 Data Status:</strong> <span id="headerDataStatus">Local Storage</span><br/>
+            <strong>🔄 Last Sync:</strong> <span id="headerLastSync">Never</span><br/>
+            <strong>📊 Collaboration:</strong> <span id="headerCollabStatus">Single User</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2738,6 +2741,58 @@
         saveToLocalStorage();
       }
     }, 60000);
+    
+    function updateHeaderInfo() {
+  // Session name
+  const currentSession = availableSessions.find(s => s.id === currentSessionId);
+  const sessionNameEl = document.getElementById('headerSessionName');
+  if (sessionNameEl) {
+    sessionNameEl.textContent = currentSession ? currentSession.name : 'Unknown Session';
+  }
+
+  // Senator count
+  const senatorCount = senators.republican.length + senators.democrat.length;
+  const senatorCountEl = document.getElementById('headerSenatorCount');
+  if (senatorCountEl) {
+    senatorCountEl.textContent = senatorCount;
+  }
+
+  // Faction count
+  const factionCount = factions.republican.length + factions.democrat.length;
+  const factionCountEl = document.getElementById('headerFactionCount');
+  if (factionCountEl) {
+    factionCountEl.textContent = factionCount;
+  }
+
+  // Data status
+  const dataStatusEl = document.getElementById('headerDataStatus');
+  if (dataStatusEl) {
+    if (syncEnabled) {
+      const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+      dataStatusEl.textContent = isAuthorized ? 'Google Sheets' : 'Local Storage';
+    } else {
+      dataStatusEl.textContent = 'Local Storage';
+    }
+  }
+
+  // Collaboration status
+  const collabStatusEl = document.getElementById('headerCollabStatus');
+  if (collabStatusEl) {
+    if (syncEnabled) {
+      const isAuthorized = gapi && gapi.client && gapi.client.getToken() !== null;
+      collabStatusEl.textContent = isAuthorized ? 'Multi-User Ready' : 'Single User';
+    } else {
+      collabStatusEl.textContent = 'Single User';
+    }
+  }
+}
+
+function updateHeaderLastSync(message) {
+  const lastSyncEl = document.getElementById('headerLastSync');
+  if (lastSyncEl) {
+    lastSyncEl.textContent = message || new Date().toLocaleTimeString();
+  }
+}
   </script>
 </body>
 </html>
