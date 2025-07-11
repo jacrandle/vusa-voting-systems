@@ -1020,8 +1020,8 @@
               <span class="party-title">🔴 Republicans</span>
             </div>
             <div class="seat-display">
-              Senators: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
-              <br><small>Total Weight: <span id="repSenateWeight">0</span></small>
+              Total Vote Weight: <span id="repSenateCurrent">0</span> / <span id="repSenateTotal">49</span>
+              <br><small>Players: <span id="repSenatorCount">0</span> senators</small>
             </div>
             <div id="republicanSenators"></div>
           </div>
@@ -1031,8 +1031,8 @@
               <span class="party-title">🔵 Democrats</span>
             </div>
             <div class="seat-display">
-              Senators: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
-              <br><small>Total Weight: <span id="demSenateWeight">0</span></small>
+              Total Vote Weight: <span id="demSenateCurrent">0</span> / <span id="demSenateTotal">50</span>
+              <br><small>Players: <span id="demSenatorCount">0</span> senators</small>
             </div>
             <div id="democratSenators"></div>
           </div>
@@ -1903,9 +1903,9 @@
       const repTotalWeight = Object.values(repWeights).reduce((sum, weight) => sum + weight, 0);
       const demTotalWeight = Object.values(demWeights).reduce((sum, weight) => sum + weight, 0);
 
-      // Show total weighted votes as numerator, not senator count
-      document.getElementById('repSenateCurrent').textContent = senators.republican.length;
-      document.getElementById('demSenateCurrent').textContent = senators.democrat.length;
+      // Show total weighted votes, which should equal party seat totals
+      document.getElementById('repSenateCurrent').textContent = repTotalWeight;
+      document.getElementById('demSenateCurrent').textContent = demTotalWeight;
       document.getElementById('repHouseCurrent').textContent = repHouseCurrent;
       document.getElementById('demHouseCurrent').textContent = demHouseCurrent;
       
@@ -1914,8 +1914,11 @@
       document.getElementById('demSenateTotal').textContent = partySeats.democrat.senate;
       document.getElementById('demHouseTotal').textContent = partySeats.democrat.house;
       
-      document.getElementById('repSenateWeight').textContent = repTotalWeight;
-      document.getElementById('demSenateWeight').textContent = demTotalWeight;
+      // Show actual player counts
+      const repSenatorCountEl = document.getElementById('repSenatorCount');
+      const demSenatorCountEl = document.getElementById('demSenatorCount');
+      if (repSenatorCountEl) repSenatorCountEl.textContent = senators.republican.length;
+      if (demSenatorCountEl) demSenatorCountEl.textContent = senators.democrat.length;
     }
 
     function vote(id, voteType, isSenator = false) {
