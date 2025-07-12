@@ -7,7 +7,7 @@ Transform how you understand Congressional power dynamics with this sophisticate
 ---
 
 ## 🎯 **Live Demo**
-**[🚀 Try it now →](https://your-netlify-url.netlify.app)**
+**[🚀 Try it now →](https://vusa-ivs.netlify.app/)**
 
 *Experience realistic Congressional voting with real-time collaboration and authentic power structures*
 
@@ -93,7 +93,7 @@ Rank-and-File = 1 vote (guaranteed representation)
 ## 🚀 **Getting Started**
 
 ### Quick Start (No Setup Required)
-1. **[Open the app](https://your-netlify-url.netlify.app)**
+1. **[Open the app](https://vusa-ivs.netlify.app/)**
 2. **Create factions**: Add political caucuses with seat counts
 3. **Add senators**: Assign roles (Party Leader, Whip, Chair, Rank-and-File)  
 4. **Start voting**: Cast votes and watch real-time results
@@ -196,8 +196,7 @@ MIT License - feel free to use, modify, and distribute for educational purposes.
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/vusa-voting/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/vusa-voting/discussions)  
-- **Email**: your.email@example.com
-- **Twitter**: [@yourusername](https://twitter.com/yourusername)
+- **Email**: virtualgovownership@gmail.com
 
 ---
 
