@@ -139,7 +139,7 @@ This project aims to accurately simulate Congressional processes regardless of p
 ### Where to Ask Questions
 - **GitHub Discussions**: For general questions and ideas
 - **GitHub Issues**: For specific bugs or feature requests
-- **Email**: [your.email@example.com] for sensitive topics
+- **Email**: virtualgovownership@gmail.com for sensitive topics
 
 ### Response Times
 - We aim to respond to issues within 48 hours
